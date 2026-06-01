@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Apresentação</title>
+  <style>
+    :root {
+      --p: #2563eb;
+      --s: #0f172a;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; overflow: hidden; background: #020617; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Progress bar ─────────────────── */
+    #progress-bar {
+      position: fixed;
+      top: 0; left: 0;
+      height: 3px;
+      background: var(--p);
+      box-shadow: 0 0 12px var(--p);
+      transition: width .5s cubic-bezier(.4,0,.2,1);
+      z-index: 100;
+    }
+
+    /* ── Stage ────────────────────────── */
+    #stage {
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      align-items: stretch;
+    }
+
+    /* ── Base slide ───────────────────── */
+    .slide {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* ─────────────────────────────────── */
+    /*  CAPA                               */
+    /* ─────────────────────────────────── */
+    .slide-capa {
+      background: var(--p);
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+    }
+    /* Decorative rings */
+    .slide-capa::before,
+    .slide-capa::after {
+      content: '';
+      position: absolute;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,.12);
+      pointer-events: none;
+    }
+    .slide-capa::before {
+      width: 65vw; height: 65vw;
+      right: -18vw; bottom: -22vw;
+    }
+    .slide-capa::after {
+      width: 38vw; height: 38vw;
+      left: 4vw; top: -12vw;
+      border-color: rgba(255,255,255,.07);
+    }
+    .capa-inner {
+      position: relative;
+      z-index: 1;
+      max-width: 860px;
+      padding: 0 4rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .capa-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: .4rem;
+      padding: .3rem .85rem;
+      border: 1px solid rgba(255,255,255,.28);
+      border-radius: 999px;
+      font-size: .72rem;
+      font-weight: 700;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,.75);
+      margin-bottom: 1.75rem;
+    }
+    .capa-titulo {
+      font-size: clamp(2.6rem, 6vw, 5rem);
+      font-weight: 800;
+      line-height: 1.08;
+      letter-spacing: -.04em;
+      color: #fff;
+      margin-bottom: 1.25rem;
+    }
+    .capa-divider {
+      width: 52px; height: 3px;
+      background: rgba(255,255,255,.45);
+      border-radius: 2px;
+      margin-bottom: 1.25rem;
+    }
+    .capa-subtitulo {
+      font-size: clamp(1rem, 2vw, 1.5rem);
+      font-weight: 400;
+      color: rgba(255,255,255,.72);
+      line-height: 1.6;
+      max-width: 640px;
+    }
+
+    /* ─────────────────────────────────── */
+    /*  CONTEÚDO                           */
+    /* ─────────────────────────────────── */
+    .slide-conteudo {
+      background: var(--s);
+    }
+    /* Subtle dot grid pattern */
+    .slide-conteudo::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: radial-gradient(circle, rgba(255,255,255,.04) 1px, transparent 1px);
+      background-size: 28px 28px;
+      pointer-events: none;
+    }
+    .conteudo-accent {
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 5px;
+      background: linear-gradient(to bottom, var(--p), transparent);
+    }
+    .conteudo-inner {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      padding: 3.5rem 4.5rem 3.5rem 5rem;
+    }
+    .conteudo-label {
+      font-size: .65rem;
+      font-weight: 700;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      color: var(--p);
+      margin-bottom: .75rem;
+      opacity: .9;
+    }
+    .conteudo-titulo {
+      font-size: clamp(1.7rem, 3.2vw, 2.75rem);
+      font-weight: 800;
+      color: #fff;
+      line-height: 1.15;
+      letter-spacing: -.025em;
+      margin-bottom: 2.25rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+    }
+    .conteudo-lista {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: .25rem;
+    }
+    .conteudo-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+      padding: .8rem 0;
+      border-bottom: 1px solid rgba(255,255,255,.04);
+      color: rgba(255,255,255,.85);
+      font-size: clamp(.9rem, 1.7vw, 1.2rem);
+      line-height: 1.55;
+      animation: itemIn .4s ease both;
+    }
+    .conteudo-item:last-child { border-bottom: none; }
+    .conteudo-dot {
+      width: 8px; height: 8px;
+      background: var(--p);
+      border-radius: 50%;
+      flex-shrink: 0;
+      margin-top: .48em;
+      box-shadow: 0 0 8px var(--p);
+    }
+    @keyframes itemIn {
+      from { opacity: 0; transform: translateX(16px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+
+    /* ─────────────────────────────────── */
+    /*  DESTAQUE                           */
+    /* ─────────────────────────────────── */
+    .slide-destaque {
+      background: var(--s);
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+    }
+    .slide-destaque::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse 70% 60% at 50% 50%, rgba(255,255,255,.03) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .destaque-inner {
+      position: relative;
+      z-index: 1;
+      max-width: 72%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.5rem;
+    }
+    .destaque-icon {
+      width: 56px; height: 56px;
+      border-radius: 50%;
+      background: var(--p);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.5rem;
+      box-shadow: 0 0 32px color-mix(in srgb, var(--p) 50%, transparent);
+    }
+    .destaque-texto {
+      font-size: clamp(1.6rem, 3.2vw, 2.8rem);
+      font-weight: 700;
+      line-height: 1.35;
+      color: #fff;
+      letter-spacing: -.02em;
+    }
+    .destaque-texto em {
+      color: var(--p);
+      font-style: normal;
+    }
+    .destaque-linha {
+      width: 44px; height: 3px;
+      background: var(--p);
+      border-radius: 2px;
+    }
+
+    /* ─────────────────────────────────── */
+    /*  ENCERRAMENTO                       */
+    /* ─────────────────────────────────── */
+    .slide-encerramento {
+      background: var(--s);
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+    }
+    .slide-encerramento::before {
+      content: '';
+      position: absolute;
+      width: 80vw; height: 80vw;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,.04);
+      left: 50%; top: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+    .slide-encerramento::after {
+      content: '';
+      position: absolute;
+      width: 45vw; height: 45vw;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,.06);
+      left: 50%; top: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+    .enc-inner {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.25rem;
+    }
+    .enc-badge {
+      width: 80px; height: 80px;
+      border-radius: 50%;
+      background: var(--p);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2rem;
+      margin-bottom: .5rem;
+      box-shadow: 0 0 50px color-mix(in srgb, var(--p) 40%, transparent),
+                  0 0 100px color-mix(in srgb, var(--p) 15%, transparent);
+    }
+    .enc-titulo {
+      font-size: clamp(2rem, 4.5vw, 3.75rem);
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: -.035em;
+      line-height: 1.1;
+    }
+    .enc-subtitulo {
+      font-size: clamp(.9rem, 1.8vw, 1.35rem);
+      color: rgba(255,255,255,.55);
+      max-width: 520px;
+      line-height: 1.6;
+    }
+
+    /* ── Logo ─────────────────────────── */
+    .slide-logo {
+      position: absolute;
+      top: 1.4rem; left: 1.75rem;
+      max-height: 44px; max-width: 160px;
+      object-fit: contain;
+      z-index: 20;
+      opacity: .9;
+      filter: drop-shadow(0 1px 3px rgba(0,0,0,.3));
+    }
+
+    /* ── Slide transitions ────────────── */
+    .slide-enter { animation: enterFwd .35s cubic-bezier(.25,.46,.45,.94) both; }
+    .slide-enter-back { animation: enterBck .35s cubic-bezier(.25,.46,.45,.94) both; }
+    @keyframes enterFwd {
+      from { opacity: 0; transform: translateX(40px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+    @keyframes enterBck {
+      from { opacity: 0; transform: translateX(-40px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+
+    /* ── Navigation ───────────────────── */
+    .nav {
+      position: fixed;
+      bottom: 1.75rem;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      background: rgba(2,6,23,.8);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255,255,255,.08);
+      padding: .45rem .8rem;
+      border-radius: 999px;
+      z-index: 50;
+      box-shadow: 0 8px 32px rgba(0,0,0,.4);
+    }
+    .nav-arrow {
+      width: 34px; height: 34px;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,.12);
+      background: none;
+      color: rgba(255,255,255,.75);
+      font-size: 1.2rem;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: all .15s;
+      line-height: 1;
+    }
+    .nav-arrow:hover:not(:disabled) {
+      background: rgba(255,255,255,.1);
+      color: #fff;
+      border-color: rgba(255,255,255,.25);
+    }
+    .nav-arrow:disabled { opacity: .18; cursor: default; }
+
+    .nav-dots {
+      display: flex;
+      align-items: center;
+      gap: .3rem;
+      padding: 0 .3rem;
+    }
+    .nav-dot {
+      height: 6px;
+      border-radius: 3px;
+      background: rgba(255,255,255,.2);
+      transition: all .25s cubic-bezier(.4,0,.2,1);
+      cursor: pointer;
+      width: 6px;
+    }
+    .nav-dot:hover { background: rgba(255,255,255,.4); }
+    .nav-dot.ativo {
+      background: var(--p);
+      width: 22px;
+      box-shadow: 0 0 8px var(--p);
+    }
+
+    .nav-count {
+      font-size: .72rem;
+      font-weight: 600;
+      color: rgba(255,255,255,.35);
+      min-width: 44px;
+      text-align: center;
+    }
+
+    /* ── Top controls ─────────────────── */
+    .top-controls {
+      position: fixed;
+      top: .85rem; right: 1rem;
+      display: flex;
+      gap: .4rem;
+      z-index: 50;
+    }
+    .ctrl {
+      background: rgba(2,6,23,.75);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,.09);
+      color: rgba(255,255,255,.6);
+      padding: .32rem .75rem;
+      border-radius: 6px;
+      font-size: .72rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .ctrl:hover { background: rgba(2,6,23,.95); color: #fff; border-color: rgba(255,255,255,.18); }
+
+    /* ── Error ────────────────────────── */
+    .error {
+      width: 100vw; height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+      flex-direction: column; gap: .5rem;
+      color: rgba(255,255,255,.3);
+    }
+    .error strong { font-size: 1rem; color: rgba(255,255,255,.6); }
+  </style>
+</head>
+<body>
+
+<div id="progress-bar"></div>
+<div id="stage"></div>
+<nav id="nav" class="nav" style="display:none"></nav>
+<div class="top-controls">
+  <button class="ctrl" onclick="toggleFS()">⛶ Tela cheia</button>
+  <button class="ctrl" onclick="window.close()">✕ Fechar</button>
+</div>
+
+<script>
+  let slides   = [];
+  let idx      = 0;
+  let backward = false;
+  let logo     = '';
+
+  /* ── Init ───────────────────────────── */
+  function init() {
+    const raw = localStorage.getItem('apresentacao_data');
+    if (!raw) {
+      document.getElementById('stage').innerHTML =
+        `<div class="error"><strong>Nenhuma apresentação encontrada.</strong>
+         <span style="font-size:.8rem">Gere uma pelo dashboard primeiro.</span></div>`;
+      return;
+    }
+
+    const data = JSON.parse(raw);
+    slides = data.slides || [];
+    logo   = data.logo   || '';
+
+    document.documentElement.style.setProperty('--p', data.corPrimaria   || '#2563eb');
+    document.documentElement.style.setProperty('--s', data.corSecundaria || '#0f172a');
+    if (data.nomeCliente) document.title = `${data.nomeCliente} — Apresentação`;
+
+    render();
+    document.getElementById('nav').style.display = 'flex';
+  }
+
+  /* ── Render slide ───────────────────── */
+  function render() {
+    const s     = slides[idx];
+    const total = slides.length;
+    if (!s) return;
+
+    const anim  = backward ? 'slide-enter-back' : 'slide-enter';
+    const logoH = logo
+      ? `<img class="slide-logo" src="${x(logo)}" alt="Logo" onerror="this.remove()">`
+      : '';
+
+    let html = '';
+
+    if (s.type === 'capa') {
+      html = `
+        <div class="slide slide-capa ${anim}">
+          ${logoH}
+          <div class="capa-inner">
+            <span class="capa-tag">✦ Apresentação Estratégica</span>
+            <h1 class="capa-titulo">${x(s.titulo || '')}</h1>
+            <div class="capa-divider"></div>
+            ${s.subtitulo ? `<p class="capa-subtitulo">${x(s.subtitulo)}</p>` : ''}
+          </div>
+        </div>`;
+
+    } else if (s.type === 'destaque') {
+      html = `
+        <div class="slide slide-destaque ${anim}">
+          ${logoH}
+          <div class="destaque-inner">
+            <div class="destaque-icon">💡</div>
+            <p class="destaque-texto">${x(s.texto || '')}</p>
+            <div class="destaque-linha"></div>
+          </div>
+        </div>`;
+
+    } else if (s.type === 'encerramento') {
+      html = `
+        <div class="slide slide-encerramento ${anim}">
+          ${logoH}
+          <div class="enc-inner">
+            <div class="enc-badge">🚀</div>
+            <h2 class="enc-titulo">${x(s.titulo || '')}</h2>
+            ${s.subtitulo ? `<p class="enc-subtitulo">${x(s.subtitulo)}</p>` : ''}
+          </div>
+        </div>`;
+
+    } else {
+      const itens = (s.pontos || []).map((p, i) => `
+        <div class="conteudo-item" style="animation-delay:${i * .07}s">
+          <span class="conteudo-dot"></span>
+          <span>${x(p)}</span>
+        </div>`).join('');
+
+      html = `
+        <div class="slide slide-conteudo ${anim}">
+          ${logoH}
+          <div class="conteudo-accent"></div>
+          <div class="conteudo-inner">
+            <div class="conteudo-label">Slide ${idx + 1} de ${total}</div>
+            <h2 class="conteudo-titulo">${x(s.titulo || '')}</h2>
+            <div class="conteudo-lista">${itens}</div>
+          </div>
+        </div>`;
+    }
+
+    document.getElementById('stage').innerHTML = html;
+    renderProgress();
+    renderNav();
+  }
+
+  /* ── Progress bar ───────────────────── */
+  function renderProgress() {
+    const pct = slides.length > 1 ? (idx / (slides.length - 1)) * 100 : 100;
+    document.getElementById('progress-bar').style.width = pct + '%';
+  }
+
+  /* ── Nav dots ───────────────────────── */
+  function renderNav() {
+    const nav   = document.getElementById('nav');
+    const total = slides.length;
+    const MAX_DOTS = 14;
+
+    const middle = total <= MAX_DOTS
+      ? `<div class="nav-dots">
+           ${slides.map((_, i) =>
+             `<div class="nav-dot ${i === idx ? 'ativo' : ''}" onclick="ir(${i})"></div>`
+           ).join('')}
+         </div>`
+      : `<span class="nav-count">${idx + 1} / ${total}</span>`;
+
+    nav.innerHTML = `
+      <button class="nav-arrow" onclick="ir(idx - 1)" ${idx === 0 ? 'disabled' : ''}>&#8249;</button>
+      ${middle}
+      <button class="nav-arrow" onclick="ir(idx + 1)" ${idx === total - 1 ? 'disabled' : ''}>&#8250;</button>`;
+  }
+
+  /* ── Navigate ───────────────────────── */
+  function ir(n) {
+    if (n < 0 || n >= slides.length) return;
+    backward = n < idx;
+    idx = n;
+    render();
+  }
+
+  /* ── Fullscreen ─────────────────────── */
+  function toggleFS() {
+    if (!document.fullscreenElement) document.documentElement.requestFullscreen?.();
+    else document.exitFullscreen?.();
+  }
+
+  /* ── Keyboard ───────────────────────── */
+  document.addEventListener('keydown', (e) => {
+    if (['ArrowRight', 'ArrowDown', ' '].includes(e.key)) { e.preventDefault(); ir(idx + 1); }
+    if (['ArrowLeft',  'ArrowUp'       ].includes(e.key)) { e.preventDefault(); ir(idx - 1); }
+    if (e.key === 'f' || e.key === 'F')  toggleFS();
+    if (e.key === 'Escape' && !document.fullscreenElement) window.close();
+  });
+
+  /* ── Escape HTML ────────────────────── */
+  function x(s) {
+    return String(s ?? '')
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  init();
+</script>
+</body>
+</html>

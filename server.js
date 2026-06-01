@@ -1,0 +1,340 @@
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const path = require('path');
+const Anthropic = require('@anthropic-ai/sdk');
+const {
+  listarClientes,
+  criarCliente,
+  atualizarFormSheet,
+  buscarRespostasForm,
+  salvarDiagnostico,
+  buscarDiagnostico,
+  salvarAcessos,
+  buscarAcessos,
+  atualizarEtapa,
+  buscarEtapas,
+} = require('./sheets');
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+app.use(cors());
+app.use(express.json());
+app.use(express.static(path.join(__dirname, 'public')));
+
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
+});
+
+const WHATSAPP_TEMPLATES = {
+  2: 'Bem-vindo! Ficamos muito felizes com sua decisão de iniciar esse projeto com a gente. Este grupo será nosso canal principal de comunicação, garantindo organização e agilidade. Nos próximos dias, vamos estruturar toda a base estratégica do seu crescimento.',
+  3: 'Olá, [nome]! Para iniciarmos seu projeto da forma mais estratégica possível, preciso que preencha nosso formulário de coleta de dados. As respostas vão nos ajudar a entender seu cenário atual, objetivos e oportunidades de crescimento. Assim que finalizar, me avisa por aqui.',
+  7: 'Perfeito, [nome]! Agora preciso da sua ajuda com 3 pontos rápidos: Quais são seus principais concorrentes hoje? Quais perfis ou conteúdos você usa como referência? Na sua visão, quais os principais motivos que fazem um possível cliente não comprar de você hoje?',
+};
+
+// GET /api/clientes — lista clientes com progresso de etapas
+app.get('/api/clientes', async (req, res) => {
+  try {
+    const clientes = await listarClientes();
+
+    const clientesComProgresso = await Promise.all(
+      clientes.map(async (cliente) => {
+        try {
+          const etapas = await buscarEtapas(cliente.id);
+          const concluidas = etapas.filter((e) => e.status === 'concluida').length;
+          return { ...cliente, progresso: { concluidas, total: 13 } };
+        } catch {
+          return { ...cliente, progresso: { concluidas: 0, total: 13 } };
+        }
+      })
+    );
+
+    res.json({ clientes: clientesComProgresso });
+  } catch (err) {
+    res.status(500).json({ error: `Erro ao listar clientes: ${err.message}` });
+  }
+});
+
+// POST /api/clientes — cria cliente e suas 13 etapas
+app.post('/api/clientes', async (req, res) => {
+  const { nome, responsavel } = req.body;
+  if (!nome || !responsavel) {
+    return res.status(400).json({ error: 'nome e responsavel são obrigatórios' });
+  }
+  try {
+    const cliente = await criarCliente(nome, responsavel);
+    res.status(201).json({ cliente });
+  } catch (err) {
+    res.status(500).json({ error: `Erro ao criar cliente: ${err.message}` });
+  }
+});
+
+// PATCH /api/etapa — atualiza status e observação de uma etapa
+app.patch('/api/etapa', async (req, res) => {
+  const { clienteId, etapaNum, status, obs } = req.body;
+  if (!clienteId || !etapaNum || !status) {
+    return res.status(400).json({ error: 'clienteId, etapaNum e status são obrigatórios' });
+  }
+  try {
+    const etapa = await atualizarEtapa(clienteId, etapaNum, status, obs);
+    res.json({ etapa });
+  } catch (err) {
+    res.status(500).json({ error: `Erro ao atualizar etapa: ${err.message}` });
+  }
+});
+
+// GET /api/templates/:etapa — retorna template de WhatsApp da etapa
+app.get('/api/templates/:etapa', (req, res) => {
+  const etapaNum = Number(req.params.etapa);
+  const template = WHATSAPP_TEMPLATES[etapaNum];
+  if (!template) {
+    return res.status(404).json({ error: `Nenhum template encontrado para a etapa ${etapaNum}` });
+  }
+  res.json({ etapa: etapaNum, template });
+});
+
+// POST /api/diagnostico — gera diagnóstico via Claude com dados do cliente
+app.post('/api/diagnostico', async (req, res) => {
+  const { clienteId, dados } = req.body;
+  if (!clienteId || !dados) {
+    return res.status(400).json({ error: 'clienteId e dados são obrigatórios' });
+  }
+  try {
+    const prompt = `Você é um especialista em marketing digital e crescimento de negócios.
+
+Com base nos dados abaixo, gere um diagnóstico completo em markdown com:
+- Resumo do cenário atual
+- Principais pontos fortes
+- Principais desafios e gargalos
+- Oportunidades identificadas
+- Recomendações estratégicas prioritárias
+
+**Cliente ID:** ${clienteId}
+
+**Dados coletados:**
+${typeof dados === 'string' ? dados : JSON.stringify(dados, null, 2)}`;
+
+    const result = await anthropic.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 8000,
+      messages: [{ role: 'user', content: prompt }],
+    });
+
+    res.json({ clienteId, diagnostico: result.content[0].text });
+  } catch (err) {
+    res.status(500).json({ error: `Erro ao gerar diagnóstico: ${err.message}` });
+  }
+});
+
+// POST /api/clientes/:id/diagnostico — salva diagnóstico na planilha
+app.post('/api/clientes/:id/diagnostico', async (req, res) => {
+  const { diagnostico } = req.body;
+  if (!diagnostico) return res.status(400).json({ error: 'diagnostico é obrigatório' });
+  try {
+    await salvarDiagnostico(req.params.id, diagnostico);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: `Erro ao salvar diagnóstico: ${err.message}` });
+  }
+});
+
+// GET /api/clientes/:id/diagnostico — retorna diagnóstico salvo
+app.get('/api/clientes/:id/diagnostico', async (req, res) => {
+  try {
+    const diagnostico = await buscarDiagnostico(req.params.id);
+    res.json({ diagnostico });
+  } catch (err) {
+    res.status(500).json({ error: `Erro ao buscar diagnóstico: ${err.message}` });
+  }
+});
+
+// POST /api/pauta — gera pauta de reunião de alinhamento com base no diagnóstico
+app.post('/api/pauta', async (req, res) => {
+  const { clienteId, diagnostico: diagBody } = req.body;
+  if (!clienteId) return res.status(400).json({ error: 'clienteId é obrigatório' });
+
+  let diagnostico = diagBody?.trim();
+  if (!diagnostico) {
+    try { diagnostico = await buscarDiagnostico(clienteId); } catch {}
+  }
+  if (!diagnostico) {
+    return res.status(400).json({ error: 'Nenhum diagnóstico disponível. Gere o diagnóstico primeiro.' });
+  }
+
+  let nomeCliente = clienteId;
+  try {
+    const todos = await listarClientes();
+    const c = todos.find((x) => x.id === clienteId);
+    if (c) nomeCliente = c.nome;
+  } catch {}
+
+  try {
+    const prompt = `Você é um especialista em marketing digital e estratégia de negócios.
+
+Com base no diagnóstico abaixo, gere uma pauta completa em markdown para a Reunião de Alinhamento com o cliente "${nomeCliente}".
+
+A pauta deve conter as seguintes seções, com tempo estimado, pontos específicos ao cliente e perguntas-chave para conduzir a conversa:
+
+1. **Abertura** (5 min) — boas-vindas e objetivo da reunião
+2. **Apresentação do Diagnóstico** — principais achados com perguntas de validação
+3. **Validação dos Objetivos** — confirmar metas e expectativas
+4. **Oportunidades Identificadas** — apresentar oportunidades e explorar reações
+5. **Direção Estratégica Proposta** — caminho recomendado com perguntas de alinhamento
+6. **Próximos Passos** — ações concretas, responsáveis e prazos
+7. **Dúvidas e Alinhamentos** — espaço aberto
+
+Para cada seção inclua perguntas-chave específicas ao diagnóstico do cliente.
+
+Diagnóstico do cliente:
+${diagnostico}`;
+
+    const result = await anthropic.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 4000,
+      messages: [{ role: 'user', content: prompt }],
+    });
+
+    res.json({ pauta: result.content[0].text });
+  } catch (err) {
+    res.status(500).json({ error: `Erro ao gerar pauta: ${err.message}` });
+  }
+});
+
+// POST /api/apresentacao — gera slides via Claude e retorna com cores e logo
+app.post('/api/apresentacao', async (req, res) => {
+  const { clienteId, dados, corPrimaria, corSecundaria, logo } = req.body;
+  if (!clienteId || !dados) {
+    return res.status(400).json({ error: 'clienteId e dados são obrigatórios' });
+  }
+  try {
+    let nomeCliente = clienteId;
+    try {
+      const todos = await listarClientes();
+      const c = todos.find((x) => x.id === clienteId);
+      if (c) nomeCliente = c.nome;
+    } catch {}
+
+    // Se não vieram dados, usa o diagnóstico salvo automaticamente
+    let dadosFinais = dados?.trim();
+    if (!dadosFinais) {
+      try { dadosFinais = await buscarDiagnostico(clienteId); } catch {}
+    }
+    if (!dadosFinais) {
+      return res.status(400).json({ error: 'Nenhum dado ou diagnóstico disponível. Preencha o campo de contexto.' });
+    }
+
+    const prompt = `Você é um especialista em marketing digital. Crie uma apresentação profissional de onboarding para o cliente abaixo.
+
+Retorne SOMENTE um JSON válido, sem markdown, sem explicações, exatamente neste formato:
+{
+  "slides": [
+    { "type": "capa", "titulo": "...", "subtitulo": "..." },
+    { "type": "conteudo", "titulo": "...", "pontos": ["...", "..."] },
+    { "type": "destaque", "texto": "frase de impacto curta" },
+    { "type": "conteudo", "titulo": "...", "pontos": ["..."] },
+    { "type": "encerramento", "titulo": "...", "subtitulo": "..." }
+  ]
+}
+
+Tipos permitidos: "capa" (abertura), "conteudo" (título + lista de pontos), "destaque" (frase curta de impacto), "encerramento" (fechamento).
+Gere entre 6 e 10 slides. Seja objetivo e direto. Cada ponto deve ter no máximo 12 palavras.
+
+Dados do cliente:
+${dadosFinais}`;
+
+    const result = await anthropic.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 3000,
+      messages: [{ role: 'user', content: prompt }],
+    });
+
+    const text = result.content[0].text.trim();
+    const jsonStr = text.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim();
+    const parsed = JSON.parse(jsonStr);
+
+    res.json({
+      slides:        parsed.slides,
+      corPrimaria:   corPrimaria   || '#2563eb',
+      corSecundaria: corSecundaria || '#0f172a',
+      logo:          logo          || '',
+      nomeCliente,
+    });
+  } catch (err) {
+    res.status(500).json({ error: `Erro ao gerar apresentação: ${err.message}` });
+  }
+});
+
+// PATCH /api/clientes/:id/formsheet — salva o ID da planilha de respostas do Forms
+app.patch('/api/clientes/:id/formsheet', async (req, res) => {
+  const { formSheetId } = req.body;
+  if (!formSheetId) {
+    return res.status(400).json({ error: 'formSheetId é obrigatório' });
+  }
+  try {
+    const result = await atualizarFormSheet(req.params.id, formSheetId);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: `Erro ao salvar planilha: ${err.message}` });
+  }
+});
+
+// GET /api/clientes/:id/respostas — lê respostas do Google Forms
+// Aceita ?formSheetId= (sem precisar salvar antes) ou usa o salvo na planilha
+app.get('/api/clientes/:id/respostas', async (req, res) => {
+  try {
+    let formSheetId = req.query.formSheetId?.trim();
+
+    if (!formSheetId) {
+      const clientes = await listarClientes();
+      const cliente = clientes.find((c) => c.id === req.params.id);
+      if (!cliente) return res.status(404).json({ error: 'Cliente não encontrado.' });
+      formSheetId = cliente.formSheetId;
+    }
+
+    if (!formSheetId) {
+      return res.status(400).json({ error: 'Informe o ID da planilha no campo acima.' });
+    }
+
+    const respostas = await buscarRespostasForm(formSheetId);
+    res.json({ respostas });
+  } catch (err) {
+    res.status(500).json({ error: `Erro ao buscar respostas: ${err.message}` });
+  }
+});
+
+// GET /api/clientes/:id/etapas — retorna etapas de um cliente
+app.get('/api/clientes/:id/etapas', async (req, res) => {
+  try {
+    const etapas = await buscarEtapas(req.params.id);
+    res.json({ etapas });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/clientes/:id/acessos — retorna acessos salvos
+app.get('/api/clientes/:id/acessos', async (req, res) => {
+  try {
+    const acessos = await buscarAcessos(req.params.id);
+    res.json({ acessos });
+  } catch (err) {
+    res.status(500).json({ error: `Erro ao buscar acessos: ${err.message}` });
+  }
+});
+
+// POST /api/clientes/:id/acessos — salva acessos do cliente
+app.post('/api/clientes/:id/acessos', async (req, res) => {
+  const { acessos } = req.body;
+  if (!acessos) return res.status(400).json({ error: 'acessos é obrigatório' });
+  try {
+    await salvarAcessos(req.params.id, acessos);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: `Erro ao salvar acessos: ${err.message}` });
+  }
+});
+
+app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
+});

@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Oneaboarding</title>
+  <style>
+    :root {
+      --sidebar-w: 272px;
+      --navy:        #0f172a;
+      --navy-hover:  #1e293b;
+      --navy-active: #1d4ed8;
+      --bg:          #f1f5f9;
+      --white:       #ffffff;
+      --primary:     #2563eb;
+      --primary-hov: #1d4ed8;
+      --success:     #16a34a;
+      --warning:     #ca8a04;
+      --danger:      #dc2626;
+      --text:        #0f172a;
+      --muted:       #64748b;
+      --border:      #e2e8f0;
+      --shadow:      0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.05);
+      --r:           8px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; overflow: hidden; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      font-size: 14px;
+      color: var(--text);
+      background: var(--bg);
+      display: flex;
+      height: 100vh;
+    }
+
+    /* ── Sidebar ─────────────────────────────── */
+    .sidebar {
+      width: var(--sidebar-w);
+      flex-shrink: 0;
+      background: var(--navy);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .sidebar-header {
+      padding: 1.1rem 1rem 1rem;
+      border-bottom: 1px solid rgba(255,255,255,.07);
+    }
+    .app-title {
+      display: block;
+      color: #fff;
+      font-size: 1.05rem;
+      font-weight: 700;
+      letter-spacing: -.2px;
+      margin-bottom: .65rem;
+    }
+    .btn-novo {
+      width: 100%;
+      padding: .5rem;
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      border-radius: var(--r);
+      font-size: .8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .15s;
+    }
+    .btn-novo:hover { background: var(--primary-hov); }
+
+    .lista-clientes { flex: 1; overflow-y: auto; padding: .5rem; }
+    .lista-clientes::-webkit-scrollbar { width: 4px; }
+    .lista-clientes::-webkit-scrollbar-thumb { background: rgba(255,255,255,.15); border-radius: 4px; }
+
+    .cliente-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: .6rem .75rem;
+      border-radius: var(--r);
+      cursor: pointer;
+      color: #94a3b8;
+      transition: background .15s, color .15s;
+      margin-bottom: 2px;
+    }
+    .cliente-item:hover { background: var(--navy-hover); color: #e2e8f0; }
+    .cliente-item.ativo  { background: var(--navy-active); color: #fff; }
+
+    .cliente-nome {
+      font-size: .83rem;
+      font-weight: 500;
+      flex: 1;
+      min-width: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .badge {
+      flex-shrink: 0;
+      margin-left: .4rem;
+      padding: .12rem .4rem;
+      background: rgba(255,255,255,.12);
+      border-radius: 999px;
+      font-size: .68rem;
+      font-weight: 700;
+    }
+    .badge.completo { background: var(--success); color: #fff; }
+
+    .sidebar-empty { color: #475569; text-align: center; padding: 2rem 1rem; font-size: .82rem; }
+
+    /* ── Main ────────────────────────────────── */
+    .main { flex: 1; overflow-y: auto; background: var(--bg); }
+    .main::-webkit-scrollbar { width: 6px; }
+    .main::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    .area-vazia {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: .5rem;
+      color: var(--muted);
+    }
+    .area-vazia svg { opacity: .25; margin-bottom: .25rem; }
+
+    .checklist-wrap {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 1.75rem 1.5rem 3rem;
+    }
+
+    /* ── Checklist header ────────────────────── */
+    .cl-header { margin-bottom: 1.25rem; }
+    .cl-header h2 { font-size: 1.3rem; font-weight: 700; }
+    .cl-meta {
+      display: flex;
+      gap: 1.25rem;
+      margin-top: .3rem;
+      color: var(--muted);
+      font-size: .78rem;
+    }
+
+    /* ── Progress ────────────────────────────── */
+    .progresso-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: .9rem 1.1rem;
+      margin-bottom: 1.1rem;
+      box-shadow: var(--shadow);
+    }
+    .prog-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: .5rem;
+    }
+    .prog-label { font-weight: 600; font-size: .85rem; }
+    .prog-valor { font-size: .8rem; color: var(--muted); }
+    .prog-track {
+      height: 8px;
+      background: var(--border);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .prog-fill {
+      height: 100%;
+      border-radius: 999px;
+      transition: width .4s ease;
+    }
+    .prog-fill.verde    { background: var(--success); }
+    .prog-fill.amarelo  { background: var(--warning); }
+    .prog-fill.vermelho { background: var(--danger); }
+
+    .prazo-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: .25rem;
+      margin-top: .5rem;
+      padding: .18rem .55rem;
+      border-radius: 999px;
+      font-size: .72rem;
+      font-weight: 600;
+    }
+    .prazo-pill.verde    { background: #dcfce7; color: #15803d; }
+    .prazo-pill.amarelo  { background: #fef9c3; color: #a16207; }
+    .prazo-pill.vermelho { background: #fee2e2; color: #b91c1c; }
+
+    /* ── Steps ───────────────────────────────── */
+    .etapas-lista { display: flex; flex-direction: column; gap: .45rem; }
+
+    .etapa-row {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: .8rem .9rem;
+      display: grid;
+      grid-template-columns: 36px 1fr auto;
+      gap: .65rem;
+      align-items: start;
+      box-shadow: var(--shadow);
+      transition: border-color .15s, opacity .2s;
+    }
+    .etapa-row:hover { border-color: #bfdbfe; }
+    .etapa-row.concluida-row { opacity: .68; }
+
+    .etapa-cb-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: .3rem;
+      padding-top: 1px;
+    }
+    input[type="checkbox"] {
+      width: 17px; height: 17px;
+      cursor: pointer;
+      accent-color: var(--success);
+    }
+    .etapa-num {
+      font-size: .62rem;
+      font-weight: 700;
+      color: var(--muted);
+      background: var(--bg);
+      padding: .1rem .28rem;
+      border-radius: 4px;
+    }
+
+    .etapa-info { min-width: 0; }
+    .etapa-nome {
+      display: block;
+      font-weight: 600;
+      font-size: .84rem;
+      margin-bottom: .35rem;
+      cursor: pointer;
+      user-select: none;
+    }
+    .etapa-nome.riscada { text-decoration: line-through; color: var(--muted); }
+
+    .etapa-obs {
+      width: 100%;
+      padding: .35rem .55rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: .78rem;
+      font-family: inherit;
+      color: var(--text);
+      resize: none;
+      height: 30px;
+      overflow: hidden;
+      transition: height .18s ease, border-color .15s;
+      background: var(--bg);
+      line-height: 1.45;
+    }
+    .etapa-obs:focus {
+      outline: none;
+      border-color: var(--primary);
+      height: 68px;
+      overflow: auto;
+    }
+    .etapa-obs::placeholder { color: #94a3b8; }
+
+    .etapa-acoes {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: .35rem;
+      flex-shrink: 0;
+      padding-top: 1px;
+    }
+    .data-ok {
+      font-size: .69rem;
+      color: var(--success);
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .btn-sm {
+      padding: .26rem .62rem;
+      border-radius: 6px;
+      border: none;
+      font-size: .73rem;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: opacity .15s, transform .1s;
+    }
+    .btn-sm:hover  { opacity: .85; }
+    .btn-sm:active { transform: scale(.97); }
+    .btn-copy   { background: #e0f2fe; color: #0369a1; }
+    .btn-ia     { background: #ede9fe; color: #6d28d9; }
+    .btn-apres  { background: #f0fdf4; color: #15803d; }
+    .btn-copied { background: #dcfce7; color: #15803d; }
+
+    /* ── Overlay & Modals ────────────────────── */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15,23,42,.55);
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    .overlay.hidden { display: none; }
+
+    .modal {
+      background: var(--white);
+      border-radius: 12px;
+      padding: 1.6rem;
+      width: 100%;
+      max-width: 460px;
+      box-shadow: 0 24px 64px rgba(0,0,0,.22);
+    }
+    .modal-diag  { max-width: 660px; max-height: 88vh; display: flex; flex-direction: column; }
+
+    .input-row {
+      display: flex;
+      gap: .45rem;
+      align-items: center;
+    }
+    .input-row input { flex: 1; }
+    .btn-inline {
+      flex-shrink: 0;
+      padding: .52rem .85rem;
+      background: none;
+      border: 1px solid var(--primary);
+      color: var(--primary);
+      border-radius: 6px;
+      font-size: .78rem;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all .15s;
+    }
+    .btn-inline:hover { background: var(--primary); color: #fff; }
+    .btn-inline.ok    { border-color: var(--success); color: var(--success); }
+    .btn-inline.ok:hover { background: var(--success); color: #fff; }
+    .btn-carregar {
+      display: inline-flex;
+      align-items: center;
+      gap: .35rem;
+      margin-top: .5rem;
+      padding: .38rem .8rem;
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      color: #15803d;
+      border-radius: 6px;
+      font-size: .78rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .15s;
+    }
+    .btn-carregar:hover    { background: #dcfce7; }
+    .btn-carregar:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-pauta   { background: #fff7ed; color: #c2410c; }
+    .btn-acessos { background: #faf5ff; color: #7e22ce; }
+    .modal-pauta   { max-width: 660px; max-height: 88vh; display: flex; flex-direction: column; }
+    .modal-acessos { max-width: 580px; max-height: 88vh; display: flex; flex-direction: column; }
+
+    .acessos-resumo {
+      font-size: .8rem; font-weight: 600;
+      padding: .38rem .75rem;
+      border-radius: 6px;
+      margin-bottom: .85rem;
+      border: 1px solid #bbf7d0;
+      background: #f0fdf4;
+      color: #15803d;
+      flex-shrink: 0;
+    }
+    .acessos-resumo.completo { background: #dcfce7; border-color: #86efac; }
+
+    .acessos-lista {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: .4rem;
+      padding-right: 2px;
+    }
+    .acessos-lista::-webkit-scrollbar { width: 4px; }
+    .acessos-lista::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    .acesso-row {
+      padding: .65rem .75rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--white);
+      transition: border-color .15s, background .15s;
+    }
+    .acesso-row.acesso-recebido   { border-color: #86efac; background: #f0fdf4; }
+    .acesso-row.acesso-nao_aplica { border-color: #93c5fd; background: #eff6ff; }
+
+    .acesso-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: .4rem;
+      gap: .5rem;
+    }
+    .acesso-label { font-weight: 600; font-size: .82rem; flex: 1; }
+
+    .status-btns { display: flex; gap: .2rem; flex-shrink: 0; }
+    .status-btn {
+      padding: .18rem .5rem;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      font-size: .65rem;
+      font-weight: 600;
+      cursor: pointer;
+      background: var(--bg);
+      color: var(--muted);
+      transition: all .12s;
+      white-space: nowrap;
+    }
+    .status-btn.s-pendente.active  { background: #f1f5f9; border-color: #94a3b8; color: #475569; }
+    .status-btn.s-recebido.active  { background: #dcfce7; border-color: #86efac; color: #15803d; }
+    .status-btn.s-nao.active       { background: #dbeafe; border-color: #93c5fd; color: #1d4ed8; }
+
+    .acesso-obs {
+      width: 100%;
+      padding: .32rem .55rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: .76rem;
+      font-family: inherit;
+      color: var(--text);
+      background: var(--bg);
+      transition: border-color .15s;
+    }
+    .acesso-obs:focus { outline: none; border-color: var(--primary); }
+    .info-badge {
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+      padding: .38rem .75rem;
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 6px;
+      font-size: .78rem;
+      font-weight: 500;
+      color: #15803d;
+      margin-bottom: .75rem;
+    }
+    .modal-apres { max-width: 520px; }
+
+    .color-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: .75rem;
+      margin-top: .9rem;
+    }
+    .color-field label { margin-top: 0; }
+    input[type="color"] {
+      width: 100%;
+      height: 38px;
+      padding: 3px 4px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      cursor: pointer;
+      background: var(--white);
+    }
+
+    .modal h2 { font-size: 1rem; font-weight: 700; margin-bottom: 1.1rem; }
+
+    .modal label {
+      display: block;
+      font-size: .76rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .03em;
+      margin-bottom: .3rem;
+      margin-top: .9rem;
+    }
+    .modal label:first-of-type { margin-top: 0; }
+
+    .modal input, .modal textarea {
+      width: 100%;
+      padding: .55rem .7rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: .875rem;
+      font-family: inherit;
+      color: var(--text);
+      background: var(--white);
+      transition: border-color .15s;
+    }
+    .modal input:focus, .modal textarea:focus { outline: none; border-color: var(--primary); }
+    .modal textarea { resize: vertical; }
+
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: .45rem;
+      margin-top: 1.1rem;
+      flex-shrink: 0;
+    }
+    .btn-cancel {
+      padding: .5rem .9rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: .83rem;
+      font-weight: 500;
+      cursor: pointer;
+      color: var(--text);
+    }
+    .btn-cancel:hover { background: var(--border); }
+    .btn-primary {
+      padding: .5rem 1rem;
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: .83rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .15s;
+    }
+    .btn-primary:hover    { background: var(--primary-hov); }
+    .btn-primary:disabled { opacity: .55; cursor: not-allowed; }
+
+    /* Diagnosis */
+    .diag-output {
+      flex: 1;
+      overflow-y: auto;
+      margin-top: .9rem;
+      padding: 1rem;
+      background: var(--bg);
+      border-radius: 8px;
+      font-size: .84rem;
+      line-height: 1.75;
+      min-height: 160px;
+    }
+    .diag-output::-webkit-scrollbar { width: 4px; }
+    .diag-output::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    .diag-output h1, .diag-output h2, .diag-output h3 {
+      margin: .9rem 0 .3rem;
+      color: var(--text);
+      line-height: 1.3;
+    }
+    .diag-output h1 { font-size: 1rem; }
+    .diag-output h2 { font-size: .93rem; }
+    .diag-output h3 { font-size: .86rem; }
+    .diag-output ul { margin: .35rem 0 .35rem 1.1rem; }
+    .diag-output li { margin-bottom: .15rem; }
+    .diag-output p  { margin: .3rem 0; }
+    .diag-output strong { color: var(--text); }
+
+    .loading-row {
+      display: flex;
+      align-items: center;
+      gap: .65rem;
+      color: var(--muted);
+      font-size: .84rem;
+      padding: .75rem 0;
+    }
+    .spinner {
+      width: 18px; height: 18px;
+      border: 2px solid var(--border);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin .55s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Toast ───────────────────────────────── */
+    .toast {
+      position: fixed;
+      bottom: 1.25rem;
+      right: 1.25rem;
+      padding: .6rem 1rem;
+      border-radius: 8px;
+      font-size: .83rem;
+      font-weight: 500;
+      color: #fff;
+      z-index: 200;
+      box-shadow: 0 4px 14px rgba(0,0,0,.16);
+      animation: slideUp .18s ease;
+    }
+    .toast.hidden  { display: none; }
+    .toast.success { background: var(--success); }
+    .toast.error   { background: var(--danger); }
+    .toast.info    { background: var(--primary); }
+    @keyframes slideUp {
+      from { transform: translateY(6px); opacity: 0; }
+      to   { transform: translateY(0);   opacity: 1; }
+    }
+
+    .hidden { display: none !important; }
+
+    /* ── Inline Presentation ─────────────── */
+    .apres-viewer {
+      height: 100%;
+      min-height: 100%;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .apres-slide {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 3.5rem 5rem;
+      position: relative;
+      animation: apresFade .25s ease;
+    }
+    @keyframes apresFade { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; } }
+
+    .apres-slide-capa, .apres-slide-encerramento {
+      background: var(--p, #2563eb);
+      color: #fff;
+      text-align: center;
+      gap: 1rem;
+    }
+    .apres-slide-capa .titulo, .apres-slide-encerramento .titulo {
+      font-size: clamp(1.8rem, 3.5vw, 3rem);
+      font-weight: 800;
+      line-height: 1.15;
+    }
+    .apres-slide-capa .subtitulo, .apres-slide-encerramento .subtitulo {
+      font-size: clamp(.9rem, 1.8vw, 1.4rem);
+      opacity: .88;
+    }
+
+    .apres-slide-conteudo {
+      background: var(--s, #0f172a);
+      color: #e2e8f0;
+      align-items: flex-start;
+    }
+    .apres-slide-conteudo .titulo {
+      font-size: clamp(1.2rem, 2.4vw, 2rem);
+      font-weight: 700;
+      color: var(--p, #2563eb);
+      margin-bottom: 1.5rem;
+      padding-bottom: .6rem;
+      border-bottom: 3px solid var(--p, #2563eb);
+      width: 100%;
+    }
+    .apres-slide-conteudo ul { list-style: none; width: 100%; }
+    .apres-slide-conteudo li {
+      display: flex;
+      align-items: flex-start;
+      gap: .7rem;
+      font-size: clamp(.85rem, 1.6vw, 1.15rem);
+      margin-bottom: .8rem;
+      line-height: 1.55;
+      opacity: .93;
+    }
+    .apres-slide-conteudo li::before {
+      content: '▸';
+      color: var(--p, #2563eb);
+      flex-shrink: 0;
+      margin-top: .1em;
+    }
+
+    .apres-slide-destaque {
+      background: var(--s, #0f172a);
+      color: #fff;
+      text-align: center;
+    }
+    .apres-slide-destaque .linha {
+      width: 50px; height: 4px;
+      background: var(--p, #2563eb);
+      border-radius: 2px;
+      margin: 0 auto 1.25rem;
+    }
+    .apres-slide-destaque .texto {
+      font-size: clamp(1.3rem, 2.8vw, 2.4rem);
+      font-weight: 700;
+      color: var(--p, #2563eb);
+      line-height: 1.4;
+      max-width: 80%;
+    }
+
+    .apres-logo {
+      position: absolute;
+      top: 1.25rem; left: 1.75rem;
+      max-height: 40px; max-width: 160px;
+      object-fit: contain;
+    }
+
+    .apres-nav {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: .75rem;
+      padding: .7rem 1.25rem;
+      background: #1e293b;
+      border-top: 1px solid rgba(255,255,255,.07);
+    }
+    .apres-nav-btn {
+      background: none;
+      border: 1px solid rgba(255,255,255,.2);
+      color: #fff;
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      font-size: 1.1rem;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background .15s;
+    }
+    .apres-nav-btn:hover:not(:disabled) { background: rgba(255,255,255,.1); }
+    .apres-nav-btn:disabled { opacity: .25; cursor: default; }
+    .apres-nav-counter {
+      font-size: .8rem;
+      font-weight: 600;
+      color: #94a3b8;
+      min-width: 52px;
+      text-align: center;
+    }
+    .apres-btn-voltar {
+      margin-left: auto;
+      padding: .35rem .8rem;
+      background: rgba(255,255,255,.07);
+      border: 1px solid rgba(255,255,255,.13);
+      color: #94a3b8;
+      border-radius: 6px;
+      font-size: .75rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background .15s, color .15s;
+    }
+    .apres-btn-voltar:hover { background: rgba(255,255,255,.14); color: #fff; }
+  </style>
+</head>
+<body>
+
+  <!-- Toast -->
+  <div id="toast" class="toast hidden"></div>
+
+  <!-- Overlay -->
+  <div id="overlay" class="overlay hidden">
+
+    <!-- Modal: Novo Cliente -->
+    <div id="modal-cliente" class="modal hidden">
+      <h2>Novo cliente</h2>
+      <form id="form-novo-cliente">
+        <label for="input-nome">Nome do cliente</label>
+        <input id="input-nome" type="text" required placeholder="Ex: Empresa Exemplo" />
+        <label for="input-responsavel">Responsável</label>
+        <input id="input-responsavel" type="text" required placeholder="Ex: João Silva" />
+        <div class="modal-actions">
+          <button type="button" class="btn-cancel" onclick="fecharModal()">Cancelar</button>
+          <button type="submit" class="btn-primary" id="btn-criar">Criar cliente</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Modal: Diagnóstico IA -->
+    <div id="modal-diag" class="modal modal-diag hidden">
+      <h2>✨ Diagnóstico com IA</h2>
+
+      <div id="diag-form">
+        <label for="diag-formsheet">ID da planilha do formulário</label>
+        <div class="input-row">
+          <input id="diag-formsheet" type="text"
+            placeholder="Ex: 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74..." />
+          <button type="button" class="btn-inline" id="btn-salvar-formsheet"
+                  onclick="salvarFormSheet()">Salvar</button>
+        </div>
+        <button type="button" class="btn-carregar" id="btn-carregar-respostas"
+                onclick="carregarRespostasForm()">
+          📥 Carregar respostas do formulário
+        </button>
+
+        <label for="diag-dados" style="margin-top:1rem">Dados e contexto</label>
+        <textarea id="diag-dados" rows="7"
+          placeholder="Cole aqui as respostas do formulário preenchido, informações sobre mercado-alvo, objetivos, concorrentes..."></textarea>
+        <div class="modal-actions">
+          <button type="button" class="btn-cancel" onclick="fecharModal()">Cancelar</button>
+          <button type="button" class="btn-primary" id="btn-gerar" onclick="executarDiagnostico()">Gerar diagnóstico</button>
+        </div>
+      </div>
+
+      <div id="diag-loading" class="loading-row hidden">
+        <div class="spinner"></div>
+        <span>Gerando diagnóstico com Claude...</span>
+      </div>
+
+      <div id="diag-resultado" class="hidden" style="flex:1;display:flex;flex-direction:column;min-height:0">
+        <div id="diag-texto" class="diag-output"></div>
+        <div class="modal-actions">
+          <button type="button" class="btn-cancel" onclick="fecharModal()">Fechar</button>
+          <button type="button" class="btn-primary" onclick="copiarDiagnostico()">Copiar texto</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Apresentação -->
+    <div id="modal-apres" class="modal modal-apres hidden">
+      <h2>🎯 Gerar Apresentação</h2>
+
+      <div id="apres-form">
+        <div id="apres-diag-status" class="info-badge hidden">
+          ✅ Diagnóstico carregado automaticamente
+        </div>
+        <div class="color-row">
+          <div class="color-field">
+            <label for="apres-cor-primaria">Cor primária</label>
+            <input id="apres-cor-primaria" type="color" value="#2563eb" />
+          </div>
+          <div class="color-field">
+            <label for="apres-cor-secundaria">Cor secundária</label>
+            <input id="apres-cor-secundaria" type="color" value="#0f172a" />
+          </div>
+        </div>
+        <label for="apres-logo">URL da logo (opcional)</label>
+        <input id="apres-logo" type="text" placeholder="https://... ou deixe vazio" />
+        <label for="apres-dados">Contexto / diagnóstico (editável)</label>
+        <textarea id="apres-dados" rows="5"
+          placeholder="Aguardando diagnóstico... ou cole aqui o contexto manualmente."></textarea>
+        <div class="modal-actions">
+          <button type="button" class="btn-cancel" onclick="fecharModal()">Cancelar</button>
+          <button type="button" class="btn-primary" id="btn-gerar-apres" onclick="executarApresentacao()">Gerar apresentação</button>
+        </div>
+      </div>
+
+      <div id="apres-loading" class="loading-row hidden">
+        <div class="spinner"></div>
+        <span>Gerando slides com Claude...</span>
+      </div>
+    </div>
+
+    <!-- Modal: Acessos -->
+    <div id="modal-acessos" class="modal modal-acessos hidden">
+      <h2>🔑 Coleta de Acessos — Etapa 12</h2>
+      <div class="acessos-resumo" id="acessos-resumo">Carregando...</div>
+      <div class="acessos-lista" id="acessos-lista"></div>
+      <div class="modal-actions" style="flex-shrink:0">
+        <button type="button" class="btn-cancel" onclick="fecharModal()">Cancelar</button>
+        <button type="button" class="btn-primary" id="btn-salvar-acessos"
+                onclick="salvarAcessosModal()">Salvar</button>
+      </div>
+    </div>
+
+    <!-- Modal: Pauta de Reunião -->
+    <div id="modal-pauta" class="modal modal-pauta hidden">
+      <h2>📋 Pauta de Reunião de Alinhamento</h2>
+
+      <div id="pauta-form">
+        <div id="pauta-diag-status" class="info-badge hidden">
+          ✅ Diagnóstico carregado automaticamente
+        </div>
+        <label for="pauta-dados">Diagnóstico (base para a pauta — editável)</label>
+        <textarea id="pauta-dados" rows="8"
+          placeholder="Aguardando diagnóstico... ou cole aqui o diagnóstico manualmente."></textarea>
+        <div class="modal-actions">
+          <button type="button" class="btn-cancel" onclick="fecharModal()">Cancelar</button>
+          <button type="button" class="btn-primary" id="btn-gerar-pauta" onclick="executarPauta()">Gerar pauta</button>
+        </div>
+      </div>
+
+      <div id="pauta-loading" class="loading-row hidden">
+        <div class="spinner"></div>
+        <span>Gerando pauta com Claude...</span>
+      </div>
+
+      <div id="pauta-resultado" class="hidden" style="flex:1;display:flex;flex-direction:column;min-height:0">
+        <div id="pauta-texto" class="diag-output"></div>
+        <div class="modal-actions">
+          <button type="button" class="btn-cancel" onclick="fecharModal()">Fechar</button>
+          <button type="button" class="btn-primary" onclick="copiarPauta()">Copiar pauta</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Layout -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <span class="app-title">Oneaboarding</span>
+      <button class="btn-novo" onclick="abrirModalCliente()">+ Novo cliente</button>
+    </div>
+    <div id="lista-clientes" class="lista-clientes">
+      <p class="sidebar-empty">Carregando...</p>
+    </div>
+  </aside>
+
+  <main class="main" id="main">
+    <div id="area-principal" class="area-vazia">
+      <svg width="44" height="44" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+        <rect x="3" y="3" width="18" height="18" rx="2"/>
+        <path d="M9 12l2 2 4-4"/>
+      </svg>
+      <p style="font-size:.9rem">Selecione um cliente para ver o checklist</p>
+    </div>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
