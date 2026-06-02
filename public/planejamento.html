@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Planejamento de Conteúdo</title>
+  <style>
+    :root {
+      --navy:    #0f172a;
+      --bg:      #f1f5f9;
+      --white:   #ffffff;
+      --primary: #2563eb;
+      --primary-hov: #1d4ed8;
+      --success: #16a34a;
+      --warning: #ca8a04;
+      --danger:  #dc2626;
+      --text:    #0f172a;
+      --muted:   #64748b;
+      --border:  #e2e8f0;
+      --shadow:  0 1px 3px rgba(0,0,0,.08);
+      --r: 8px;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      font-size: 14px;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── Header ──────────────────────────── */
+    .page-header {
+      background: var(--navy);
+      color: #fff;
+      padding: .9rem 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .btn-voltar {
+      background: rgba(255,255,255,.1);
+      border: 1px solid rgba(255,255,255,.15);
+      color: #fff;
+      padding: .35rem .75rem;
+      border-radius: 6px;
+      font-size: .78rem;
+      font-weight: 500;
+      cursor: pointer;
+      text-decoration: none;
+      white-space: nowrap;
+      transition: background .15s;
+    }
+    .btn-voltar:hover { background: rgba(255,255,255,.18); }
+    .header-info h1 { font-size: 1rem; font-weight: 700; }
+    .header-info p  { font-size: .78rem; color: rgba(255,255,255,.6); margin-top: .1rem; }
+
+    /* ── Main ────────────────────────────── */
+    .page-main {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 1.5rem 1.25rem 4rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    /* ── Card ────────────────────────────── */
+    .card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 1.25rem 1.5rem;
+      box-shadow: var(--shadow);
+    }
+    .card h2 {
+      font-size: .95rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+    }
+
+    /* ── Form elements ───────────────────── */
+    label {
+      display: block;
+      font-size: .74rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .03em;
+      margin-bottom: .3rem;
+      margin-top: .8rem;
+    }
+    label:first-of-type { margin-top: 0; }
+
+    input[type="text"], textarea {
+      width: 100%;
+      padding: .55rem .7rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: .875rem;
+      font-family: inherit;
+      color: var(--text);
+      background: var(--white);
+      transition: border-color .15s;
+    }
+    input[type="text"]:focus, textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+    textarea { resize: vertical; min-height: 120px; }
+
+    .input-row {
+      display: flex;
+      gap: .45rem;
+      align-items: center;
+    }
+    .input-row input { flex: 1; }
+
+    /* ── Buttons ─────────────────────────── */
+    .btn {
+      padding: .55rem 1.1rem;
+      border: none;
+      border-radius: 6px;
+      font-size: .83rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity .15s;
+      white-space: nowrap;
+    }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover:not(:disabled) { background: var(--primary-hov); }
+    .btn-success { background: var(--success); color: #fff; }
+    .btn-success:hover:not(:disabled) { background: #15803d; }
+    .btn-outline {
+      background: none;
+      border: 1px solid var(--primary);
+      color: var(--primary);
+    }
+    .btn-outline:hover:not(:disabled) { background: var(--primary); color: #fff; }
+    .btn-inline {
+      padding: .52rem .85rem;
+      background: none;
+      border: 1px solid var(--primary);
+      color: var(--primary);
+      border-radius: 6px;
+      font-size: .78rem;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all .15s;
+    }
+    .btn-inline:hover { background: var(--primary); color: #fff; }
+    .btn-inline.ok    { border-color: var(--success); color: var(--success); }
+    .btn-inline.ok:hover { background: var(--success); color: #fff; }
+
+    .btn-row {
+      display: flex;
+      gap: .5rem;
+      margin-top: 1rem;
+      flex-wrap: wrap;
+    }
+
+    /* ── Checkboxes group ────────────────── */
+    .check-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .5rem .75rem;
+      margin-top: .6rem;
+    }
+    .check-group label {
+      display: flex;
+      align-items: center;
+      gap: .35rem;
+      font-size: .83rem;
+      font-weight: 500;
+      color: var(--text);
+      text-transform: none;
+      letter-spacing: 0;
+      margin-top: 0;
+      cursor: pointer;
+    }
+    .check-group input[type="checkbox"] {
+      width: 15px; height: 15px;
+      cursor: pointer;
+      accent-color: var(--primary);
+    }
+
+    /* ── Info badge ──────────────────────── */
+    .info-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: .35rem;
+      padding: .35rem .75rem;
+      border-radius: 6px;
+      font-size: .78rem;
+      font-weight: 500;
+      margin-bottom: .75rem;
+    }
+    .info-badge.green { background: #f0fdf4; border: 1px solid #bbf7d0; color: #15803d; }
+    .info-badge.blue  { background: #eff6ff; border: 1px solid #bfdbfe; color: #1d4ed8; }
+
+    /* ── Equilibrium summary ─────────────── */
+    .eq-summary {
+      display: flex;
+      gap: .5rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+    }
+    .eq-badge {
+      padding: .3rem .75rem;
+      border-radius: 999px;
+      font-size: .78rem;
+      font-weight: 700;
+    }
+    .eq-hero { background: #fee2e2; color: #b91c1c; }
+    .eq-hub  { background: #dbeafe; color: #1d4ed8; }
+    .eq-help { background: #dcfce7; color: #15803d; }
+
+    /* ── Tables ──────────────────────────── */
+    .table-wrap {
+      overflow-x: auto;
+      margin-top: .75rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .8rem;
+    }
+    th {
+      background: #f8fafc;
+      padding: .55rem .75rem;
+      text-align: left;
+      font-weight: 700;
+      color: var(--muted);
+      font-size: .72rem;
+      text-transform: uppercase;
+      letter-spacing: .03em;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+    td {
+      padding: .55rem .75rem;
+      border-bottom: 1px solid #f1f5f9;
+      vertical-align: middle;
+    }
+    tr:last-child td { border-bottom: none; }
+
+    .row-hero { background: #fff5f5; }
+    .row-hub  { background: #eff6ff; }
+    .row-help { background: #f0fdf4; }
+
+    .tag {
+      display: inline-block;
+      padding: .15rem .5rem;
+      border-radius: 999px;
+      font-size: .68rem;
+      font-weight: 700;
+    }
+    .tag-hero { background: #fee2e2; color: #b91c1c; }
+    .tag-hub  { background: #dbeafe; color: #1d4ed8; }
+    .tag-help { background: #dcfce7; color: #15803d; }
+    .tag-prof { background: #fef9c3; color: #a16207; }
+    .tag-ader { background: #ede9fe; color: #6d28d9; }
+    .tag-ad   { background: #fee2e2; color: #b91c1c; }
+
+    .nota-badge {
+      display: inline-block;
+      min-width: 28px;
+      padding: .15rem .4rem;
+      background: var(--navy);
+      color: #fff;
+      border-radius: 4px;
+      font-weight: 700;
+      font-size: .78rem;
+      text-align: center;
+    }
+
+    /* ── Loading ─────────────────────────── */
+    .loading-row {
+      display: flex;
+      align-items: center;
+      gap: .65rem;
+      color: var(--muted);
+      font-size: .84rem;
+      padding: .75rem 0;
+    }
+    .spinner {
+      width: 18px; height: 18px;
+      border: 2px solid var(--border);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin .55s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Toast ───────────────────────────── */
+    .toast {
+      position: fixed;
+      bottom: 1.25rem; right: 1.25rem;
+      padding: .6rem 1rem;
+      border-radius: 8px;
+      font-size: .83rem;
+      font-weight: 500;
+      color: #fff;
+      z-index: 200;
+      box-shadow: 0 4px 14px rgba(0,0,0,.16);
+      animation: slideUp .18s ease;
+    }
+    .toast.hidden  { display: none; }
+    .toast.success { background: var(--success); }
+    .toast.error   { background: var(--danger); }
+    .toast.info    { background: var(--primary); }
+    @keyframes slideUp {
+      from { transform: translateY(6px); opacity: 0; }
+      to   { transform: translateY(0);   opacity: 1; }
+    }
+
+    .hidden { display: none !important; }
+    .section-divider { border: none; border-top: 1px solid var(--border); margin: .25rem 0; }
+  </style>
+</head>
+<body>
+
+<header class="page-header">
+  <a href="/" class="btn-voltar">← Voltar</a>
+  <div class="header-info">
+    <h1>📅 Planejamento de Conteúdo</h1>
+    <p id="cliente-nome">Carregando...</p>
+  </div>
+</header>
+
+<div id="toast" class="toast hidden"></div>
+
+<main class="page-main">
+
+  <!-- Cobo -->
+  <div class="card">
+    <h2>📊 Planilha Cobo</h2>
+    <label>ID da planilha Cobo</label>
+    <div class="input-row">
+      <input id="cobo-id" type="text"
+             placeholder="Cole o ID da planilha (parte da URL entre /d/ e /edit)" />
+      <button class="btn-inline" id="btn-salvar-cobo" onclick="salvarCoboId()">Salvar</button>
+    </div>
+    <p style="font-size:.72rem;color:var(--muted);margin-top:.4rem">
+      A planilha Cobo precisa ter as abas "RDC - Reels" e "Planejamento" criadas, e estar compartilhada com a Service Account.
+    </p>
+  </div>
+
+  <!-- Ideias -->
+  <div class="card">
+    <h2>💡 Ideias de Conteúdo</h2>
+    <label>Cole as ideias (uma por linha)</label>
+    <textarea id="ideias-input" placeholder="Ex:&#10;Como crescer no Instagram em 2025&#10;Bastidores da criação de peças de crochê&#10;5 erros que impedem vendas no WhatsApp"></textarea>
+
+    <label style="margin-top:1rem">Redes sociais ativas</label>
+    <div class="check-group">
+      <label><input type="checkbox" class="rede-check" value="Instagram" checked> Instagram</label>
+      <label><input type="checkbox" class="rede-check" value="TikTok"> TikTok</label>
+      <label><input type="checkbox" class="rede-check" value="WhatsApp"> WhatsApp</label>
+      <label><input type="checkbox" class="rede-check" value="LinkedIn"> LinkedIn</label>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" id="btn-avaliar" onclick="avaliarIdeias()">✨ Avaliar ideias com IA</button>
+    </div>
+    <div id="avaliar-loading" class="loading-row hidden">
+      <div class="spinner"></div>
+      <span>Avaliando ideias com Claude...</span>
+    </div>
+  </div>
+
+  <!-- Avaliação -->
+  <div class="card hidden" id="section-avaliacao">
+    <h2>📈 Avaliação das Ideias</h2>
+    <div class="eq-summary" id="eq-summary"></div>
+    <div class="table-wrap">
+      <table id="tabela-avaliacao">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Ideia</th>
+            <th>Nota</th>
+            <th>Modelagem</th>
+            <th>Permeabilidade</th>
+            <th>Formato</th>
+            <th>Horário</th>
+            <th>Rede</th>
+            <th>CTA</th>
+          </tr>
+        </thead>
+        <tbody id="tabela-avaliacao-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Planejamento -->
+  <div class="card hidden" id="section-planejamento">
+    <h2>📆 Montar Planejamento Semanal</h2>
+    <label>Dias da semana</label>
+    <div class="check-group">
+      <label><input type="checkbox" class="dia-check" value="Segunda" checked> Segunda</label>
+      <label><input type="checkbox" class="dia-check" value="Terça"   checked> Terça</label>
+      <label><input type="checkbox" class="dia-check" value="Quarta"  checked> Quarta</label>
+      <label><input type="checkbox" class="dia-check" value="Quinta"  checked> Quinta</label>
+      <label><input type="checkbox" class="dia-check" value="Sexta"   checked> Sexta</label>
+      <label><input type="checkbox" class="dia-check" value="Sábado"> Sábado</label>
+      <label><input type="checkbox" class="dia-check" value="Domingo"> Domingo</label>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" id="btn-planejar" onclick="montarPlanejamento()">📅 Montar planejamento</button>
+    </div>
+    <div id="planejar-loading" class="loading-row hidden">
+      <div class="spinner"></div>
+      <span>Montando planejamento com Claude...</span>
+    </div>
+
+    <div id="section-resultado" class="hidden" style="margin-top:1.25rem">
+      <hr class="section-divider" style="margin-bottom:1.25rem">
+      <h2 style="font-size:.95rem;font-weight:700;margin-bottom:1rem">🗓 Planejamento Semanal</h2>
+      <div class="table-wrap">
+        <table id="tabela-planejamento">
+          <thead>
+            <tr>
+              <th>Dia</th>
+              <th>Conteúdo</th>
+              <th>Modelagem</th>
+              <th>Permeabilidade</th>
+              <th>Formato</th>
+              <th>Horário</th>
+            </tr>
+          </thead>
+          <tbody id="tabela-planejamento-body"></tbody>
+        </table>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-success" id="btn-exportar" onclick="exportarParaPlanilha()">
+          📊 Exportar para planilha Cobo
+        </button>
+      </div>
+      <div id="exportar-loading" class="loading-row hidden">
+        <div class="spinner"></div>
+        <span>Exportando para o Google Sheets...</span>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+  const params     = new URLSearchParams(location.search);
+  const clienteId  = params.get('clienteId');
+  let conteudosAvaliados = [];
+  let planejamentoGerado = [];
+
+  // ── Init ──────────────────────────────────
+  async function init() {
+    if (!clienteId) {
+      document.getElementById('cliente-nome').textContent = 'clienteId não informado na URL';
+      return;
+    }
+    try {
+      const data = await apiFetch('GET', '/api/clientes');
+      const c = (data.clientes || []).find((x) => x.id === clienteId);
+      document.title = c ? `Planejamento — ${c.nome}` : 'Planejamento de Conteúdo';
+      document.getElementById('cliente-nome').textContent = c?.nome || clienteId;
+    } catch { document.getElementById('cliente-nome').textContent = clienteId; }
+
+    // Carrega ID da planilha Cobo salvo
+    try {
+      const data = await apiFetch('GET', `/api/clientes/${clienteId}/conteudo/planilhaId`);
+      if (data.planilhaId) document.getElementById('cobo-id').value = data.planilhaId;
+    } catch {}
+  }
+
+  // ── API helper ────────────────────────────
+  async function apiFetch(method, path, body) {
+    const opts = { method, headers: { 'Content-Type': 'application/json' } };
+    if (body) opts.body = JSON.stringify(body);
+    const res  = await fetch(path, opts);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    return data;
+  }
+
+  // ── Salvar ID Cobo ────────────────────────
+  async function salvarCoboId() {
+    const planilhaId = document.getElementById('cobo-id').value.trim();
+    if (!planilhaId) { showToast('Informe o ID da planilha', 'error'); return; }
+    const btn = document.getElementById('btn-salvar-cobo');
+    btn.disabled = true; btn.textContent = 'Salvando...';
+    try {
+      await apiFetch('PATCH', `/api/clientes/${clienteId}/conteudo/planilhaId`, { planilhaId });
+      btn.textContent = '✓ Salvo'; btn.className = 'btn-inline ok';
+      setTimeout(() => { btn.textContent = 'Salvar'; btn.className = 'btn-inline'; btn.disabled = false; }, 2500);
+    } catch (err) {
+      showToast('Erro ao salvar: ' + err.message, 'error');
+      btn.disabled = false; btn.textContent = 'Salvar';
+    }
+  }
+
+  // ── Avaliar ideias ────────────────────────
+  async function avaliarIdeias() {
+    const txt = document.getElementById('ideias-input').value.trim();
+    if (!txt) { showToast('Cole as ideias antes de avaliar', 'error'); return; }
+    const ideias = txt.split('\n').map((l) => l.trim()).filter(Boolean);
+    const redes  = [...document.querySelectorAll('.rede-check:checked')].map((c) => c.value);
+
+    const btn = document.getElementById('btn-avaliar');
+    btn.disabled = true;
+    show('avaliar-loading');
+    try {
+      const data = await apiFetch('POST', `/api/clientes/${clienteId}/conteudo/avaliar`, { ideias, redes });
+      conteudosAvaliados = data.conteudos || [];
+      renderAvaliacao();
+      show('section-avaliacao');
+      show('section-planejamento');
+      document.getElementById('section-avaliacao').scrollIntoView({ behavior: 'smooth' });
+    } catch (err) {
+      showToast('Erro ao avaliar: ' + err.message, 'error');
+    } finally {
+      btn.disabled = false;
+      hide('avaliar-loading');
+    }
+  }
+
+  function renderAvaliacao() {
+    const sorted = [...conteudosAvaliados].sort((a, b) => a.ordem - b.ordem);
+
+    // Equilíbrio
+    const hero = sorted.filter((c) => c.modelagem === 'HERO').length;
+    const hub  = sorted.filter((c) => c.modelagem === 'HUB').length;
+    const help = sorted.filter((c) => c.modelagem === 'HELP').length;
+    document.getElementById('eq-summary').innerHTML = `
+      <span class="eq-badge eq-hero">HERO: ${hero}</span>
+      <span class="eq-badge eq-hub">HUB: ${hub}</span>
+      <span class="eq-badge eq-help">HELP: ${help}</span>`;
+
+    document.getElementById('tabela-avaliacao-body').innerHTML = sorted.map((c) => `
+      <tr class="row-${(c.modelagem || '').toLowerCase()}">
+        <td>${c.ordem}</td>
+        <td style="max-width:220px;white-space:normal">${x(c.ideia)}</td>
+        <td><span class="nota-badge">${c.nota}</span></td>
+        <td><span class="tag tag-${(c.modelagem || '').toLowerCase()}">${x(c.modelagem)}</span></td>
+        <td><span class="tag ${tagPermeab(c.permeabilidade)}">${x(c.permeabilidade)}</span></td>
+        <td>${x(c.formato)}</td>
+        <td>${x(c.horario)}</td>
+        <td>${x(c.rede)}</td>
+        <td style="font-size:.75rem;color:var(--muted)">${x(c.conversacao)}</td>
+      </tr>`).join('');
+  }
+
+  // ── Montar planejamento ───────────────────
+  async function montarPlanejamento() {
+    if (!conteudosAvaliados.length) { showToast('Avalie as ideias primeiro', 'error'); return; }
+    const diasSemana = [...document.querySelectorAll('.dia-check:checked')].map((c) => c.value);
+    if (!diasSemana.length) { showToast('Selecione pelo menos um dia', 'error'); return; }
+
+    const btn = document.getElementById('btn-planejar');
+    btn.disabled = true;
+    show('planejar-loading');
+    try {
+      const data = await apiFetch('POST', `/api/clientes/${clienteId}/conteudo/planejamento`, {
+        conteudos: conteudosAvaliados,
+        diasSemana,
+      });
+      planejamentoGerado = data.semana || [];
+      renderPlanejamento();
+      show('section-resultado');
+      document.getElementById('section-resultado').scrollIntoView({ behavior: 'smooth' });
+    } catch (err) {
+      showToast('Erro ao montar planejamento: ' + err.message, 'error');
+    } finally {
+      btn.disabled = false;
+      hide('planejar-loading');
+    }
+  }
+
+  function renderPlanejamento() {
+    document.getElementById('tabela-planejamento-body').innerHTML = planejamentoGerado.map((p) => `
+      <tr class="row-${(p.modelagem || '').toLowerCase()}">
+        <td><strong>${x(p.dia)}</strong></td>
+        <td style="max-width:240px;white-space:normal">${x(p.conteudo)}</td>
+        <td><span class="tag tag-${(p.modelagem || '').toLowerCase()}">${x(p.modelagem)}</span></td>
+        <td><span class="tag ${tagPermeab(p.permeabilidade)}">${x(p.permeabilidade)}</span></td>
+        <td>${x(p.formato)}</td>
+        <td>${x(p.horario)}</td>
+      </tr>`).join('');
+  }
+
+  // ── Exportar ──────────────────────────────
+  async function exportarParaPlanilha() {
+    const planilhaId = document.getElementById('cobo-id').value.trim();
+    if (!planilhaId) { showToast('Informe o ID da planilha Cobo antes de exportar', 'error'); return; }
+    if (!conteudosAvaliados.length || !planejamentoGerado.length) {
+      showToast('Gere a avaliação e o planejamento antes de exportar', 'error'); return;
+    }
+    const btn = document.getElementById('btn-exportar');
+    btn.disabled = true;
+    show('exportar-loading');
+    try {
+      await apiFetch('POST', `/api/clientes/${clienteId}/conteudo/exportar`, {
+        conteudos: conteudosAvaliados,
+        planejamento: planejamentoGerado,
+        planilhaId,
+      });
+      showToast('Exportado com sucesso!');
+    } catch (err) {
+      showToast('Erro ao exportar: ' + err.message, 'error');
+    } finally {
+      btn.disabled = false;
+      hide('exportar-loading');
+    }
+  }
+
+  // ── Helpers ───────────────────────────────
+  function tagPermeab(p) {
+    if (p === 'Profundidade') return 'tag-prof';
+    if (p === 'Aderência')   return 'tag-ader';
+    return 'tag-ad';
+  }
+
+  function show(id) { document.getElementById(id)?.classList.remove('hidden'); }
+  function hide(id) { document.getElementById(id)?.classList.add('hidden'); }
+
+  function x(s) {
+    return String(s ?? '')
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  let toastTimer;
+  function showToast(msg, type = 'success') {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.className   = `toast ${type}`;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.add('hidden'), 3500);
+  }
+
+  init();
+</script>
+</body>
+</html>

@@ -309,6 +309,88 @@ async function buscarEtapas(clienteId) {
   }
 }
 
+// Salva ID da planilha Cobo na coluna H da aba Clientes
+async function salvarPlanilhaCobo(clienteId, planilhaId) {
+  try {
+    const sheets = await getSheets();
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID,
+      range: 'Clientes',
+    });
+    const rows = res.data.values || [];
+    const rowIndex = rows.findIndex((row) => row[0] === clienteId);
+    if (rowIndex === -1) throw new Error(`Cliente ${clienteId} não encontrado.`);
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SHEET_ID,
+      range: `Clientes!H${rowIndex + 1}`,
+      valueInputOption: 'USER_ENTERED',
+      requestBody: { values: [[planilhaId]] },
+    });
+    return { clienteId, planilhaId };
+  } catch (err) {
+    throw new Error(`salvarPlanilhaCobo: ${err.message}`);
+  }
+}
+
+// Busca ID da planilha Cobo na coluna H da aba Clientes
+async function buscarPlanilhaCobo(clienteId) {
+  try {
+    const sheets = await getSheets();
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID,
+      range: 'Clientes',
+    });
+    const rows = res.data.values || [];
+    const row = rows.find((r) => r[0] === clienteId);
+    if (!row) throw new Error(`Cliente ${clienteId} não encontrado.`);
+    return row[7] || '';
+  } catch (err) {
+    throw new Error(`buscarPlanilhaCobo: ${err.message}`);
+  }
+}
+
+// Exporta conteudos e planejamento para abas da planilha Cobo
+async function exportarParaCobo(planilhaId, conteudos, planejamento) {
+  try {
+    const sheets = await getSheets();
+
+    // Aba "RDC - Reels"
+    const rdcHeader = [['Ideia', 'Demanda', 'Competição', 'Nota', 'Ordem',
+      'Modelagem', 'Permeabilidade', 'Formato', 'Conversação', 'Horário', 'Rede']];
+    const rdcRows = conteudos.map((c) => [
+      c.ideia, c.demanda, c.competicao, c.nota, c.ordem,
+      c.modelagem, c.permeabilidade, c.formato, c.conversacao, c.horario, c.rede,
+    ]);
+
+    await sheets.spreadsheets.values.clear({ spreadsheetId: planilhaId, range: 'RDC - Reels' });
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: planilhaId,
+      range: 'RDC - Reels!A1',
+      valueInputOption: 'USER_ENTERED',
+      requestBody: { values: [...rdcHeader, ...rdcRows] },
+    });
+
+    // Aba "Planejamento"
+    const planHeader = [['Dia', 'Conteúdo', 'Modelagem', 'Permeabilidade', 'Formato', 'Horário']];
+    const planRows = planejamento.map((p) => [
+      p.dia, p.conteudo, p.modelagem, p.permeabilidade, p.formato, p.horario,
+    ]);
+
+    await sheets.spreadsheets.values.clear({ spreadsheetId: planilhaId, range: 'Planejamento' });
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: planilhaId,
+      range: 'Planejamento!A1',
+      valueInputOption: 'USER_ENTERED',
+      requestBody: { values: [...planHeader, ...planRows] },
+    });
+
+    return { ok: true };
+  } catch (err) {
+    throw new Error(`exportarParaCobo: ${err.message}`);
+  }
+}
+
 module.exports = {
   listarClientes,
   criarCliente,
@@ -318,6 +400,9 @@ module.exports = {
   buscarDiagnostico,
   salvarAcessos,
   buscarAcessos,
+  salvarPlanilhaCobo,
+  buscarPlanilhaCobo,
+  exportarParaCobo,
   atualizarEtapa,
   buscarEtapas,
 };

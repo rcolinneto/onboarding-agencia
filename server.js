@@ -12,6 +12,9 @@ const {
   buscarDiagnostico,
   salvarAcessos,
   buscarAcessos,
+  salvarPlanilhaCobo,
+  buscarPlanilhaCobo,
+  exportarParaCobo,
   atualizarEtapa,
   buscarEtapas,
 } = require('./sheets');
@@ -319,6 +322,126 @@ app.get('/api/clientes/:id/etapas', async (req, res) => {
     res.json({ etapas });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/clientes/:id/conteudo/planilhaId — retorna ID da planilha Cobo
+app.get('/api/clientes/:id/conteudo/planilhaId', async (req, res) => {
+  try {
+    const planilhaId = await buscarPlanilhaCobo(req.params.id);
+    res.json({ planilhaId });
+  } catch (err) {
+    res.status(500).json({ error: `Erro ao buscar planilha Cobo: ${err.message}` });
+  }
+});
+
+// PATCH /api/clientes/:id/conteudo/planilhaId — salva ID da planilha Cobo
+app.patch('/api/clientes/:id/conteudo/planilhaId', async (req, res) => {
+  const { planilhaId } = req.body;
+  if (!planilhaId) return res.status(400).json({ error: 'planilhaId é obrigatório' });
+  try {
+    await salvarPlanilhaCobo(req.params.id, planilhaId);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: `Erro ao salvar planilha Cobo: ${err.message}` });
+  }
+});
+
+// POST /api/clientes/:id/conteudo/avaliar — avalia ideias com Claude
+app.post('/api/clientes/:id/conteudo/avaliar', async (req, res) => {
+  const { ideias, redes } = req.body;
+  if (!ideias?.length) return res.status(400).json({ error: 'ideias são obrigatórias' });
+
+  try {
+    const prompt = `Você é especialista em conteúdo digital. Avalie cada ideia para as redes: ${(redes || ['Instagram']).join(', ')}.
+
+Para cada ideia retorne um objeto JSON com:
+- ideia: texto original
+- demanda: 1-5 (quanto o público busca/consome esse tipo)
+- competicao: 1-5 (saturação; 1=pouca concorrência)
+- nota: demanda * competicao
+- ordem: ranking (1=melhor)
+- modelagem: "HERO" (aspiracional/viral) | "HUB" (série regular) | "HELP" (educacional/prático)
+- permeabilidade: "Profundidade" | "Aderência" | "AD"
+- formato: "Reels 60s" | "Reels 45s" | "Carrossel" | "Foto" | "Stories" | "Video"
+- conversacao: sugestão de CTA curto (ex: "Salva esse vídeo!")
+- horario: "12H" | "18H" | "20H"
+- rede: qual das redes fornecidas é mais indicada
+
+Ideias:
+${ideias.map((id, i) => `${i + 1}. ${id}`).join('\n')}
+
+Retorne APENAS um array JSON válido, sem markdown, sem explicações.`;
+
+    const result = await anthropic.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 4000,
+      messages: [{ role: 'user', content: prompt }],
+    });
+
+    const raw = result.content[0].text.trim()
+      .replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/, '').trim();
+    const conteudos = JSON.parse(raw);
+    res.json({ conteudos });
+  } catch (err) {
+    res.status(500).json({ error: `Erro ao avaliar ideias: ${err.message}` });
+  }
+});
+
+// POST /api/clientes/:id/conteudo/planejamento — monta planejamento semanal com Claude
+app.post('/api/clientes/:id/conteudo/planejamento', async (req, res) => {
+  const { conteudos, diasSemana } = req.body;
+  if (!conteudos?.length || !diasSemana?.length) {
+    return res.status(400).json({ error: 'conteudos e diasSemana são obrigatórios' });
+  }
+
+  try {
+    const prompt = `Você é estrategista de conteúdo digital. Monte um planejamento semanal equilibrado.
+
+Regras:
+- Use mais HELP que HERO
+- Equilibre Profundidade e Aderência
+- Um conteúdo por dia nos dias fornecidos
+- Priorize conteúdos com maior nota
+
+Conteúdos disponíveis (ordenados por nota):
+${JSON.stringify(conteudos.sort((a, b) => b.nota - a.nota), null, 2)}
+
+Dias: ${diasSemana.join(', ')}
+
+Retorne APENAS um JSON válido, sem markdown:
+{
+  "semana": [
+    { "dia": "Segunda", "conteudo": "...", "modelagem": "HELP", "permeabilidade": "Profundidade", "formato": "Reels 60s", "horario": "18H" }
+  ]
+}`;
+
+    const result = await anthropic.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 2000,
+      messages: [{ role: 'user', content: prompt }],
+    });
+
+    const raw = result.content[0].text.trim()
+      .replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/, '').trim();
+    const data = JSON.parse(raw);
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: `Erro ao montar planejamento: ${err.message}` });
+  }
+});
+
+// POST /api/clientes/:id/conteudo/exportar — exporta para planilha Cobo
+app.post('/api/clientes/:id/conteudo/exportar', async (req, res) => {
+  const { conteudos, planejamento, planilhaId } = req.body;
+  if (!conteudos?.length || !planejamento?.length || !planilhaId) {
+    return res.status(400).json({ error: 'conteudos, planejamento e planilhaId são obrigatórios' });
+  }
+  try {
+    await exportarParaCobo(planilhaId, conteudos, planejamento);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: `Erro ao exportar: ${err.message}` });
   }
 });
 

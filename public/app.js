@@ -161,7 +161,11 @@ function renderChecklist() {
   area.className = 'checklist-wrap';
   area.innerHTML = `
     <div class="cl-header">
-      <h2>${esc(clienteAtual.nome)}</h2>
+      <div class="cl-header-top">
+        <h2>${esc(clienteAtual.nome)}</h2>
+        <a href="/planejamento.html?clienteId=${esc(clienteAtual.id)}"
+           class="btn-planejamento" target="_blank">📅 Planejamento de Conteúdo</a>
+      </div>
       <div class="cl-meta">
         <span>👤 ${esc(clienteAtual.responsavel)}</span>
         <span>📅 Início: ${fmtData(clienteAtual.dataInicio)}</span>
