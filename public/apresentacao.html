@@ -335,6 +335,63 @@
       to   { opacity: 1; }
     }
 
+    /* ── Slide FEED ──────────────────── */
+    .slide-feed {
+      background: #ffffff;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 3rem;
+      gap: 0;
+    }
+    .feed-slide-titulo {
+      font-size: clamp(1.4rem, 2.5vw, 2rem);
+      font-weight: 800;
+      color: var(--p);
+      margin-bottom: 1.25rem;
+      letter-spacing: -.02em;
+    }
+    .feed-grid-slide {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 4px;
+      width: min(65vh, 90%);
+      aspect-ratio: 1;
+    }
+    .fgs-post {
+      position: relative;
+      aspect-ratio: 1;
+      overflow: hidden;
+      border-radius: 3px;
+    }
+    .fgs-bg {
+      width: 100%; height: 100%;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .fgs-icon { font-size: clamp(1.2rem, 2.5vw, 2rem); }
+    .fgs-badge {
+      position: absolute; top: 3px; left: 3px;
+      padding: 1px 4px; border-radius: 3px;
+      font-size: clamp(.4rem, .8vw, .6rem);
+      font-weight: 700; color: #fff;
+    }
+    .fgs-badge-hero { background: #e53e3e; }
+    .fgs-badge-hub  { background: #3182ce; }
+    .fgs-badge-help { background: #38a169; }
+    .fgs-caption {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      background: rgba(0,0,0,.65);
+      padding: 2px 4px;
+      font-size: clamp(.35rem, .7vw, .55rem);
+      color: #fff; line-height: 1.2;
+      overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+    }
+    .fgs-day {
+      position: absolute; bottom: 3px; right: 3px;
+      font-size: clamp(.3rem, .6vw, .48rem);
+      color: rgba(255,255,255,.7); font-weight: 700;
+    }
+
     /* ── Print ────────────────────────── */
     @media print {
       .nav, .top-controls, #progress-bar { display: none !important; }
@@ -488,7 +545,33 @@
     const total = slides.length;
     if (!s) return;
 
-    const anim   = 'slide-enter'; // fade — mesmo para frente e trás
+    const anim = 'slide-enter';
+
+    // Gera gradiente a partir de --p para posts do feed
+    function feedBg(i) {
+      const p = getComputedStyle(document.documentElement).getPropertyValue('--p').trim() || '#2563eb';
+      const angles = [135, 45, 225, 90, 315, 180, 0, 270, 120];
+      const a = angles[i % angles.length];
+      const aa = ['ee','cc','aa','dd','bb','ff','99','cc','bb'][i % 9];
+      const ab = ['88','55','77','44','66','33','99','55','66'][i % 9];
+      return `linear-gradient(${a}deg,${p}${aa},${p}${ab})`;
+    }
+    function feedIcon(fmt) {
+      const f = (fmt || '').toLowerCase();
+      if (f.includes('reel') || f.includes('video')) return '▶';
+      if (f.includes('carrossel') || f.includes('carousel')) return '⊞';
+      if (f.includes('stories')) return '◻';
+      return '🖼';
+    }
+    function feedBadge(m) {
+      const u = (m || '').toUpperCase();
+      if (u === 'HERO') return 'fgs-badge-hero';
+      if (u === 'HUB')  return 'fgs-badge-hub';
+      return 'fgs-badge-help';
+    }
+    function diaAbrev(dia) {
+      return (dia || '').slice(0, 3).toUpperCase();
+    }
     const logoH  = logo
       ? `<img class="slide-logo" src="${x(logo)}" alt="Logo" onerror="this.remove()">`
       : '';
@@ -506,7 +589,26 @@
     const normalizarPontos = (sl) =>
       sl.pontos || sl.conteudos || sl.perguntas || sl.links || [];
 
-    if (tipo === 'capa') {
+    if (tipo === 'feed') {
+      const posts9 = (s.posts || []).slice(0, 9);
+      const postsHtml = posts9.map((p, i) => `
+        <div class="fgs-post">
+          <div class="fgs-bg" style="background:${feedBg(i)}">
+            <span class="fgs-icon">${feedIcon(p.formato)}</span>
+          </div>
+          <span class="fgs-badge ${feedBadge(p.modelagem)}">${(p.modelagem||'').toUpperCase()}</span>
+          <div class="fgs-caption">${x(p.conteudo)}</div>
+          <span class="fgs-day">${diaAbrev(p.dia)}</span>
+        </div>`).join('');
+      html = `
+        <div class="slide slide-feed ${anim}">
+          ${logoH}
+          <h2 class="feed-slide-titulo">${x(s.titulo || 'Feed do Instagram')}</h2>
+          <div class="feed-grid-slide">${postsHtml}</div>
+          ${footerH}
+        </div>`;
+
+    } else if (tipo === 'capa') {
       html = `
         <div class="slide slide-capa ${anim}">
           ${logoH}

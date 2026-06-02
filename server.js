@@ -561,6 +561,37 @@ app.get('/api/clientes/:id/reuniao/referencias', async (req, res) => {
   }
 });
 
+// GET /api/clientes/:id/reuniao/matriz — retorna conteúdos da Matriz Estratégica
+app.get('/api/clientes/:id/reuniao/matriz', async (req, res) => {
+  try {
+    const planilhaId = await buscarPlanilhaCobo(req.params.id);
+    if (!planilhaId) return res.status(400).json({ error: 'Planilha Cobo não configurada' });
+
+    const rows = await lerAbaCobo(planilhaId, "'Matriz Estratégica - Insta'!D7:J15");
+    const dias       = rows[0] || [];
+    const conteudos  = rows[3] || [];
+    const modelagens = rows[4] || [];
+    const formatos   = rows[6] || [];
+    const horarios   = rows[8] || [];
+
+    const resultado = dias.map((dia, i) => {
+      const c = (conteudos[i] || '').trim();
+      if (!c) return null;
+      return {
+        dia,
+        conteudo:  c,
+        modelagem: (modelagens[i] || '').trim(),
+        formato:   (formatos[i]   || '').trim(),
+        horario:   (horarios[i]   || '').trim(),
+      };
+    }).filter(Boolean);
+
+    res.json({ conteudos: resultado });
+  } catch (err) {
+    res.status(500).json({ error: `Erro ao ler Matriz: ${err.message}` });
+  }
+});
+
 // POST /api/clientes/:id/reuniao/apresentacao — gera slides JSON para a reunião
 app.post('/api/clientes/:id/reuniao/apresentacao', async (req, res) => {
   const clienteId = req.params.id;
@@ -582,23 +613,26 @@ app.post('/api/clientes/:id/reuniao/apresentacao', async (req, res) => {
       if (docId) referencias = await lerDocGoogle(docId);
     } catch {}
 
-    // Lê planejamento real da Matriz Estratégica da planilha Cobo
+    // Lê planejamento real da Matriz Estratégica + coleta posts para o slide feed
     let planejamentoTexto = '';
+    let feedPosts = [];
     try {
       const planilhaId = await buscarPlanilhaCobo(clienteId);
       if (planilhaId) {
-        // D7:J15 → row 0 = dias, row 3 = conteúdo, row 4 = modelagem, row 8 = horário
         const matrizRows = await lerAbaCobo(planilhaId, "'Matriz Estratégica - Insta'!D7:J15");
         if (matrizRows.length >= 4) {
-          const dias      = matrizRows[0] || [];
-          const conteudos = matrizRows[3] || [];
+          const dias       = matrizRows[0] || [];
+          const conteudos  = matrizRows[3] || [];
           const modelagens = matrizRows[4] || [];
-          const horarios  = matrizRows[8] || [];
+          const formatos   = matrizRows[6] || [];
+          const horarios   = matrizRows[8] || [];
           const plano = dias.map((dia, i) => {
             const c = (conteudos[i] || '').trim();
             if (!c) return null;
             const m = (modelagens[i] || '').trim();
-            const h = (horarios[i] || '').trim();
+            const h = (horarios[i]   || '').trim();
+            const f = (formatos[i]   || '').trim();
+            feedPosts.push({ dia, conteudo: c, modelagem: m, formato: f, horario: h });
             return `- ${dia}: "${c}"${m ? ` [${m}]` : ''}${h ? ` às ${h}` : ''}`;
           }).filter(Boolean);
           if (plano.length > 0) planejamentoTexto = plano.join('\n');
@@ -644,7 +678,15 @@ Gere 7 slides baseados nos dados reais do cliente.`;
     const raw = result.content[0].text.trim()
       .replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/, '').trim();
     const data = JSON.parse(raw);
-    res.json({ ...data, nomeCliente, corPrimaria, corSecundaria, logo });
+    // Injeta slide de feed antes do encerramento
+    const slidesFinais = [...data.slides];
+    if (feedPosts.length > 0) {
+      const endIdx = slidesFinais.findIndex((s) => s.tipo === 'encerramento');
+      const feedSlide = { tipo: 'feed', titulo: 'Feed do Instagram', posts: feedPosts };
+      endIdx > 0 ? slidesFinais.splice(endIdx, 0, feedSlide) : slidesFinais.push(feedSlide);
+    }
+
+    res.json({ slides: slidesFinais, nomeCliente, corPrimaria, corSecundaria, logo });
   } catch (err) {
     res.status(500).json({ error: `Erro ao gerar apresentação: ${err.message}` });
   }

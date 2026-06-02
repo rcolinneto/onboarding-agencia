@@ -308,6 +308,9 @@
       <button class="btn btn-primary" id="btn-apres" onclick="gerarApresentacao()">
         🖥 Gerar apresentação de alinhamento
       </button>
+      <button class="btn btn-outline" id="btn-feed" onclick="abrirFeedPreview()">
+        📱 Preview do Feed
+      </button>
       <button class="btn btn-success" id="btn-pauta" onclick="gerarPauta()">
         📋 Gerar pauta da reunião
       </button>
@@ -473,6 +476,14 @@
       btn.disabled = false;
       hide('pauta-loading');
     }
+  }
+
+  function abrirFeedPreview() {
+    const corPrimaria   = document.getElementById('cor-primaria').value;
+    const corSecundaria = document.getElementById('cor-secundaria').value;
+    const logo          = document.getElementById('logo-url').value.trim();
+    const url = `/feed-preview.html?clienteId=${encodeURIComponent(clienteId)}&corPrimaria=${encodeURIComponent(corPrimaria)}&corSecundaria=${encodeURIComponent(corSecundaria)}&logo=${encodeURIComponent(logo)}`;
+    window.open(url, '_blank');
   }
 
   async function copiarPauta() {
