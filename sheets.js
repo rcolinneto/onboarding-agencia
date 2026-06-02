@@ -6,10 +6,27 @@ const SHEET_ID = process.env.GOOGLE_SHEET_ID;
 const SCOPES = ['https://www.googleapis.com/auth/spreadsheets'];
 
 async function getSheets() {
-  const auth = new google.auth.GoogleAuth({
-    keyFile: path.join(__dirname, 'credentials.json'),
-    scopes: SCOPES,
-  });
+  let auth;
+  const credPath = path.join(__dirname, 'credentials.json');
+  const fs = require('fs');
+
+  if (fs.existsSync(credPath)) {
+    auth = new google.auth.GoogleAuth({
+      keyFile: credPath,
+      scopes: SCOPES,
+    });
+  } else if (process.env.GOOGLE_CREDENTIALS_BASE64) {
+    const credentials = JSON.parse(
+      Buffer.from(process.env.GOOGLE_CREDENTIALS_BASE64, 'base64').toString('utf8')
+    );
+    auth = new google.auth.GoogleAuth({
+      credentials,
+      scopes: SCOPES,
+    });
+  } else {
+    throw new Error('Nenhuma credencial do Google encontrada');
+  }
+
   return google.sheets({ version: 'v4', auth });
 }
 
