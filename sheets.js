@@ -350,41 +350,57 @@ async function buscarPlanilhaCobo(clienteId) {
   }
 }
 
-// Exporta conteudos e planejamento para as abas da planilha Cobo
-async function exportarParaCobo(planilhaId, conteudos, planejamento) {
+// Escreve conteúdos em blocos de 7 linhas de uma aba RDC (Reels ou Fotos)
+async function exportarParaRDCFotos(planilhaId, fotos) {
+  const sheets = await getSheets();
+  const RDC_BLOCOS = [6, 13, 20, 27, 34, 41, 48];
+  const sorted = [...(fotos || [])].sort((a, b) => (a.ordem || 99) - (b.ordem || 99));
+  const data = RDC_BLOCOS.map((lin, i) => {
+    const c = sorted[i];
+    return [
+      { range: `'RDC - Fotos'!B${lin}`, values: [[c?.ideia      || '']] },
+      { range: `'RDC - Fotos'!D${lin}`, values: [[c?.modelagem  || '']] },
+      { range: `'RDC - Fotos'!F${lin}`, values: [[c?.demanda    ?? '']] },
+      { range: `'RDC - Fotos'!H${lin}`, values: [[c?.competicao ?? '']] },
+      { range: `'RDC - Fotos'!L${lin}`, values: [[c?.ordem      ?? '']] },
+    ];
+  }).flat();
+  await sheets.spreadsheets.values.batchUpdate({
+    spreadsheetId: planilhaId,
+    requestBody: { valueInputOption: 'USER_ENTERED', data },
+  });
+}
+
+// Exporta reels e fotos para COBO + RDC Reels + RDC Fotos + Matriz Estratégica
+async function exportarParaCobo(planilhaId, reels, fotos) {
   try {
-    const sheets = await getSheets();
-    const pad = (arr, n = 15) => { const r = [...arr]; while (r.length < n) r.push(['']); return r; };
+    const sheets   = await getSheets();
+    const todos    = [...(reels || []), ...(fotos || [])];
+    const pad      = (arr, n = 25) => { const r = [...arr]; while (r.length < n) r.push(['']); return r; };
+    const RDC_BLOCOS = [6, 13, 20, 27, 34, 41, 48];
 
-    // Converte "12H" / "12h" / "12:00" → prefixo "12" para comparar com células da planilha
-    function horNumero(h) {
-      return String(h).replace(/[Hh]$/, '').replace(/:.*/, '').trim();
-    }
-
-    // ── 1. Aba "COBO" — ideias por rede ──────────────────────────────────────
-    const inst = (conteudos || []).filter((c) => (c.rede || '').includes('Instagram')).map((c) => [c.ideia || '']);
-    const tik  = (conteudos || []).filter((c) => (c.rede || '').includes('TikTok')).map((c) => [c.ideia || '']);
-    const was  = (conteudos || []).filter((c) => (c.rede || '').includes('WhatsApp')).map((c) => [c.ideia || '']);
-
+    // ── 1. Aba "COBO" — todas as ideias por rede ─────────────────────────────
+    const inst = todos.filter((c) => (c.rede || '').includes('Instagram')).map((c) => [c.ideia || '']);
+    const tik  = todos.filter((c) => (c.rede || '').includes('TikTok')).map((c) => [c.ideia || '']);
+    const was  = todos.filter((c) => (c.rede || '').includes('WhatsApp')).map((c) => [c.ideia || '']);
     try {
       await sheets.spreadsheets.values.batchUpdate({
         spreadsheetId: planilhaId,
         requestBody: {
           valueInputOption: 'USER_ENTERED',
           data: [
-            { range: "'COBO'!B6:B20", values: pad(inst) },
-            { range: "'COBO'!G6:G20", values: pad(tik)  },
-            { range: "'COBO'!K6:K20", values: pad(was)  },
+            { range: "'COBO'!B6:B30", values: pad(inst) },
+            { range: "'COBO'!G6:G30", values: pad(tik)  },
+            { range: "'COBO'!K6:K30", values: pad(was)  },
           ],
         },
       });
     } catch (_) { /* aba COBO opcional */ }
 
-    // ── 2. Aba "RDC - Reels" — blocos de 7 linhas ────────────────────────────
-    const RDC_BLOCOS = [6, 13, 20, 27, 34, 41, 48];
-    const sorted = [...(conteudos || [])].sort((a, b) => (a.ordem || 99) - (b.ordem || 99));
-    const rdcData = RDC_BLOCOS.map((lin, i) => {
-      const c = sorted[i];
+    // ── 2. Aba "RDC - Reels" ─────────────────────────────────────────────────
+    const sortedReels = [...(reels || [])].sort((a, b) => (a.ordem || 99) - (b.ordem || 99));
+    const rdcReelsData = RDC_BLOCOS.map((lin, i) => {
+      const c = sortedReels[i];
       return [
         { range: `'RDC - Reels'!B${lin}`, values: [[c?.ideia      || '']] },
         { range: `'RDC - Reels'!D${lin}`, values: [[c?.modelagem  || '']] },
@@ -393,203 +409,86 @@ async function exportarParaCobo(planilhaId, conteudos, planejamento) {
         { range: `'RDC - Reels'!L${lin}`, values: [[c?.ordem      ?? '']] },
       ];
     }).flat();
-
     try {
       await sheets.spreadsheets.values.batchUpdate({
         spreadsheetId: planilhaId,
-        requestBody: { valueInputOption: 'USER_ENTERED', data: rdcData },
+        requestBody: { valueInputOption: 'USER_ENTERED', data: rdcReelsData },
       });
-    } catch (_) { /* aba RDC opcional */ }
+    } catch (_) { /* aba RDC Reels opcional */ }
 
-    // ── 3. Aba "Planejamento" — 4 blocos semanais com detecção dinâmica ─────────
-    const planSheet = (await sheets.spreadsheets.values.get({
-      spreadsheetId: planilhaId,
-      range: 'Planejamento!A1:H120',
-    })).data.values || [];
-
-    const HORAS        = ['10', '12', '14', '18', '20', '22'];
-    const DIA_COL_PLAN = {
-      Segunda: 'B', Terça: 'C', Terca: 'C', Quarta: 'D',
-      Quinta: 'E', Sexta: 'F', Sábado: 'G', Sabado: 'G', Domingo: 'H',
-    };
-
-    // Encontra TODOS os blocos: cada linha onde col B === 'SEGUNDA'
-    const blocos = [];
-    for (let i = 0; i < planSheet.length; i++) {
-      if ((planSheet[i][1] || '').toUpperCase() === 'SEGUNDA') {
-        const linhaDias = i + 1; // 1-based
-
-        // Detecta horários nas próximas 30 linhas: coluna A começa com "10", "12", ...
-        const horMap = {};
-        for (let j = i + 1; j < Math.min(planSheet.length, i + 31); j++) {
-          const cel = (planSheet[j][0] || '').trim();
-          for (const h of HORAS) {
-            if ((cel.startsWith(`${h}:`) || cel === h) && !horMap[h]) {
-              horMap[h] = j + 1; // 1-based
-            }
-          }
-        }
-        blocos.push({ linhaDias, horMap });
-      }
-    }
-
-    if (blocos.length === 0) throw new Error('Nenhum bloco semanal encontrado na aba Planejamento');
-
-    // Resolve a linha do horário: exata → mais próxima numericamente
-    function resolverLinhaBloco(horMap, horario) {
-      const num = horNumero(horario || '18H');
-      if (horMap[num]) return horMap[num];
-      const sorted = Object.entries(horMap)
-        .map(([h, l]) => ({ diff: Math.abs(Number(h) - Number(num)), lin: l }))
-        .sort((a, b) => a.diff - b.diff);
-      return sorted[0]?.lin || null;
-    }
-
-    // Limpa todos os blocos com batchClear
-    await sheets.spreadsheets.values.batchClear({
-      spreadsheetId: planilhaId,
-      requestBody: {
-        ranges: blocos.map(({ linhaDias }) =>
-          `Planejamento!B${linhaDias + 2}:H${linhaDias + 25}`
-        ),
-      },
-    });
-
-    // Busca o sheetId da aba Planejamento para formatação de cores
-    let planSheetId = null;
+    // ── 3. Aba "RDC - Fotos" ─────────────────────────────────────────────────
     try {
-      const meta = await sheets.spreadsheets.get({
-        spreadsheetId: planilhaId,
-        fields: 'sheets.properties',
-      });
-      const tab = meta.data.sheets.find((s) => s.properties.title === 'Planejamento');
-      planSheetId = tab?.properties?.sheetId ?? null;
-    } catch (_) {}
+      await exportarParaRDCFotos(planilhaId, fotos);
+    } catch (_) { /* aba RDC Fotos opcional */ }
 
-    // Cores por modelagem (RGB 0–1)
-    const CORES = {
-      HERO: { red: 1.0,    green: 0.8784, blue: 0.8784 }, // #FFE0E0
-      HUB:  { red: 0.8784, green: 0.9333, blue: 1.0    }, // #E0EEFF
-      HELP: { red: 0.8784, green: 1.0,    blue: 0.9098 }, // #E0FFE8
-    };
-
-    // Monta dados e células para todos os blocos (mesmo planejamento em cada bloco)
-    const planData      = [];
-    const cellsParaColorir = []; // { rowIndex, colIndex, modelagem }
-
-    for (const { horMap } of blocos) {
-      for (const p of (planejamento || [])) {
-        const col = DIA_COL_PLAN[p.dia];
-        const lin = resolverLinhaBloco(horMap, p.horario);
-        if (!col || !lin) continue;
-
-        planData.push({ range: `Planejamento!${col}${lin}`, values: [[p.conteudo || '']] });
-
-        cellsParaColorir.push({
-          rowIndex:   lin - 1,                         // 0-based
-          colIndex:   col.charCodeAt(0) - 65,          // A=0, B=1...
-          modelagem:  (p.modelagem || '').toUpperCase(),
-        });
-      }
-    }
-
-    // Escreve os conteúdos
-    if (planData.length) {
-      await sheets.spreadsheets.values.batchUpdate({
-        spreadsheetId: planilhaId,
-        requestBody: { valueInputOption: 'USER_ENTERED', data: planData },
-      });
-    }
-
-    // Aplica cores de fundo por modelagem
-    if (planSheetId !== null && cellsParaColorir.length) {
-      const colorRequests = cellsParaColorir
-        .map(({ rowIndex, colIndex, modelagem }) => {
-          const cor = CORES[modelagem];
-          if (!cor) return null;
-          return {
-            repeatCell: {
-              range: {
-                sheetId:          planSheetId,
-                startRowIndex:    rowIndex,
-                endRowIndex:      rowIndex + 1,
-                startColumnIndex: colIndex,
-                endColumnIndex:   colIndex + 1,
-              },
-              cell: {
-                userEnteredFormat: { backgroundColor: cor },
-              },
-              fields: 'userEnteredFormat.backgroundColor',
-            },
-          };
-        })
-        .filter(Boolean);
-
-      if (colorRequests.length) {
-        await sheets.spreadsheets.batchUpdate({
-          spreadsheetId: planilhaId,
-          requestBody: { requests: colorRequests },
-        });
-      }
-    }
-
-    // Atualiza linha 1 (LEGENDAS) com redes ativas
-    const hasInsta  = (conteudos || []).some((c) => (c.rede || '').includes('Instagram'));
-    const hasTikTok = (conteudos || []).some((c) => (c.rede || '').includes('TikTok'));
-    const legendas  = [];
-    if (hasInsta)  legendas.push({ range: 'Planejamento!C1', values: [['INSTA ✓']]  });
-    if (hasTikTok) legendas.push({ range: 'Planejamento!H1', values: [['TIKTOK ✓']] });
-    if (legendas.length) {
-      await sheets.spreadsheets.values.batchUpdate({
-        spreadsheetId: planilhaId,
-        requestBody: { valueInputOption: 'USER_ENTERED', data: legendas },
-      });
-    }
-
-    // ── 4. Aba "Matriz Estratégica - Insta" — detecção dinâmica ──────────────
+    // ── 4. Aba "Matriz Estratégica - Insta" — top 7 balanceado ───────────────
     try {
-      const matSheet = (await sheets.spreadsheets.values.get({
-        spreadsheetId: planilhaId,
-        range: "'Matriz Estratégica - Insta'!A1:L40",
-      })).data.values || [];
-
-      // Encontra linha onde coluna D (index 3) === 'Segunda'
-      let linhaDiasMat = -1;
-      for (let i = 0; i < matSheet.length; i++) {
-        if ((matSheet[i][3] || '') === 'Segunda') {
-          linhaDiasMat = i + 1;
-          break;
-        }
+      // Seleciona top 7 balanceando Hero/Hub/Help (máx 2 HERO, máx 2 HUB)
+      const sortedTodos = [...todos].sort((a, b) => (b.nota || 0) - (a.nota || 0));
+      const top7 = [];
+      let heroN = 0, hubN = 0;
+      for (const c of sortedTodos) {
+        if (top7.length >= 7) break;
+        const m = (c.modelagem || '').toUpperCase();
+        if (m === 'HERO' && heroN >= 2) continue;
+        if (m === 'HUB'  && hubN  >= 2) continue;
+        top7.push(c);
+        if (m === 'HERO') heroN++;
+        else if (m === 'HUB') hubN++;
+      }
+      // Completa com melhores restantes se < 7
+      for (const c of sortedTodos) {
+        if (top7.length >= 7) break;
+        if (!top7.some((s) => s.ideia === c.ideia)) top7.push(c);
       }
 
-      if (linhaDiasMat === -1) throw new Error('Linha dos dias não encontrada na Matriz');
+      // Mapa ideia → conteudo (para CTA)
+      const ideiaMapa = {};
+      todos.forEach((c) => { ideiaMapa[c.ideia] = c; });
 
-      // Linhas de atributos: offsets relativos à linha dos dias
-      const lC = linhaDiasMat + 3; // Conteúdo
-      const lM = linhaDiasMat + 4; // Modelagem
-      const lP = linhaDiasMat + 5; // Permeabilidade
-      const lF = linhaDiasMat + 6; // Formato
-      const lV = linhaDiasMat + 7; // Conversação (CTA)
-      const lH = linhaDiasMat + 8; // Horário
-
+      // Atribui dias: Segunda→Domingo
+      const DIAS_MAT   = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
       const DIA_COL_MAT = {
         Segunda: 'D', Terça: 'E', Terca: 'E', Quarta: 'F',
         Quinta: 'G', Sexta: 'H', Sábado: 'I', Sabado: 'I', Domingo: 'J',
       };
 
-      const diaMap   = {};
-      (planejamento || []).forEach((p) => { diaMap[p.dia] = p; });
-      const ideiaMapa = {};
-      (conteudos || []).forEach((c) => { ideiaMapa[c.ideia] = c; });
+      const matrizPlan = top7.map((c, i) => ({
+        dia:            DIAS_MAT[i],
+        conteudo:       c.ideia,
+        modelagem:      c.modelagem,
+        permeabilidade: c.permeabilidade,
+        formato:        c.formato,
+        horario:        c.horario || '18H',
+      }));
 
-      const TODOS_DIAS = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
+      const diaMap = {};
+      matrizPlan.forEach((p) => { diaMap[p.dia] = p; });
+
+      const matSheet = (await sheets.spreadsheets.values.get({
+        spreadsheetId: planilhaId,
+        range: "'Matriz Estratégica - Insta'!A1:L40",
+      })).data.values || [];
+
+      let linhaDiasMat = -1;
+      for (let i = 0; i < matSheet.length; i++) {
+        if ((matSheet[i][3] || '') === 'Segunda') { linhaDiasMat = i + 1; break; }
+      }
+      if (linhaDiasMat === -1) throw new Error('Linha dos dias não encontrada na Matriz');
+
+      const lC = linhaDiasMat + 3;
+      const lM = linhaDiasMat + 4;
+      const lP = linhaDiasMat + 5;
+      const lF = linhaDiasMat + 6;
+      const lV = linhaDiasMat + 7;
+      const lH = linhaDiasMat + 8;
+      const M  = "'Matriz Estratégica - Insta'";
+
       const matData = [];
-
-      for (const dia of TODOS_DIAS) {
+      for (const dia of DIAS_MAT) {
         const col  = DIA_COL_MAT[dia];
         const item = diaMap[dia];
         const cta  = item ? (ideiaMapa[item.conteudo]?.conversacao || '') : '';
-        const M    = "'Matriz Estratégica - Insta'";
         matData.push(
           { range: `${M}!${col}${lC}`, values: [[item?.conteudo       || '']] },
           { range: `${M}!${col}${lM}`, values: [[item?.modelagem      || '']] },
@@ -600,7 +499,7 @@ async function exportarParaCobo(planilhaId, conteudos, planejamento) {
         );
       }
 
-      // Encontra dinamicamente as linhas de equilíbrio pela coluna J (index 9)
+      // Equilíbrio: busca dinamicamente linhas com Hero/Hub/Help/Profundidade/Aderência na col J
       const EQ_LABELS = ['Hero', 'Hub', 'Help', 'Profundidade', 'Aderência'];
       const eqLinhas  = {};
       for (let i = 0; i < matSheet.length; i++) {
@@ -609,21 +508,15 @@ async function exportarParaCobo(planilhaId, conteudos, planejamento) {
           if (jVal === label && !eqLinhas[label]) eqLinhas[label] = i + 1;
         }
       }
-
-      const plan   = planejamento || [];
       const counts = {
-        Hero:         plan.filter((p) => p.modelagem      === 'HERO').length,
-        Hub:          plan.filter((p) => p.modelagem      === 'HUB').length,
-        Help:         plan.filter((p) => p.modelagem      === 'HELP').length,
-        Profundidade: plan.filter((p) => p.permeabilidade === 'Profundidade').length,
-        Aderência:    plan.filter((p) => p.permeabilidade === 'Aderência').length,
+        Hero:         matrizPlan.filter((p) => p.modelagem      === 'HERO').length,
+        Hub:          matrizPlan.filter((p) => p.modelagem      === 'HUB').length,
+        Help:         matrizPlan.filter((p) => p.modelagem      === 'HELP').length,
+        Profundidade: matrizPlan.filter((p) => p.permeabilidade === 'Profundidade').length,
+        Aderência:    matrizPlan.filter((p) => p.permeabilidade === 'Aderência').length,
       };
-
       for (const [label, lin] of Object.entries(eqLinhas)) {
-        matData.push({
-          range: `'Matriz Estratégica - Insta'!K${lin}`,
-          values: [[counts[label] ?? '']],
-        });
+        matData.push({ range: `${M}!K${lin}`, values: [[counts[label] ?? '']] });
       }
 
       await sheets.spreadsheets.values.batchUpdate({
@@ -650,6 +543,7 @@ module.exports = {
   salvarPlanilhaCobo,
   buscarPlanilhaCobo,
   exportarParaCobo,
+  exportarParaRDCFotos,
   atualizarEtapa,
   buscarEtapas,
 };

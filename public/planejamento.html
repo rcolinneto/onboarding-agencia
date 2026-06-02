@@ -12,7 +12,6 @@
       --primary: #2563eb;
       --primary-hov: #1d4ed8;
       --success: #16a34a;
-      --warning: #ca8a04;
       --danger:  #dc2626;
       --text:    #0f172a;
       --muted:   #64748b;
@@ -29,7 +28,7 @@
       min-height: 100vh;
     }
 
-    /* ── Header ──────────────────────────── */
+    /* ── Header ─────────────────────────────── */
     .page-header {
       background: var(--navy);
       color: #fff;
@@ -58,9 +57,9 @@
     .header-info h1 { font-size: 1rem; font-weight: 700; }
     .header-info p  { font-size: .78rem; color: rgba(255,255,255,.6); margin-top: .1rem; }
 
-    /* ── Main ────────────────────────────── */
+    /* ── Main ───────────────────────────────── */
     .page-main {
-      max-width: 900px;
+      max-width: 960px;
       margin: 0 auto;
       padding: 1.5rem 1.25rem 4rem;
       display: flex;
@@ -68,7 +67,7 @@
       gap: 1.25rem;
     }
 
-    /* ── Card ────────────────────────────── */
+    /* ── Card ───────────────────────────────── */
     .card {
       background: var(--white);
       border: 1px solid var(--border);
@@ -81,12 +80,15 @@
       font-weight: 700;
       margin-bottom: 1rem;
       color: var(--text);
-      display: flex;
-      align-items: center;
-      gap: .4rem;
+    }
+    .card h3 {
+      font-size: .88rem;
+      font-weight: 700;
+      margin: 1.1rem 0 .6rem;
+      color: var(--text);
     }
 
-    /* ── Form elements ───────────────────── */
+    /* ── Forms ──────────────────────────────── */
     label {
       display: block;
       font-size: .74rem;
@@ -114,16 +116,20 @@
       outline: none;
       border-color: var(--primary);
     }
-    textarea { resize: vertical; min-height: 120px; }
+    textarea { resize: vertical; min-height: 130px; }
 
-    .input-row {
-      display: flex;
-      gap: .45rem;
-      align-items: center;
-    }
+    .input-row { display: flex; gap: .45rem; align-items: center; }
     .input-row input { flex: 1; }
 
-    /* ── Buttons ─────────────────────────── */
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-top: .8rem;
+    }
+    @media (max-width: 600px) { .two-col { grid-template-columns: 1fr; } }
+
+    /* ── Buttons ────────────────────────────── */
     .btn {
       padding: .55rem 1.1rem;
       border: none;
@@ -139,12 +145,6 @@
     .btn-primary:hover:not(:disabled) { background: var(--primary-hov); }
     .btn-success { background: var(--success); color: #fff; }
     .btn-success:hover:not(:disabled) { background: #15803d; }
-    .btn-outline {
-      background: none;
-      border: 1px solid var(--primary);
-      color: var(--primary);
-    }
-    .btn-outline:hover:not(:disabled) { background: var(--primary); color: #fff; }
     .btn-inline {
       padding: .52rem .85rem;
       background: none;
@@ -168,7 +168,7 @@
       flex-wrap: wrap;
     }
 
-    /* ── Checkboxes group ────────────────── */
+    /* ── Checkboxes ─────────────────────────── */
     .check-group {
       display: flex;
       flex-wrap: wrap;
@@ -193,27 +193,8 @@
       accent-color: var(--primary);
     }
 
-    /* ── Info badge ──────────────────────── */
-    .info-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: .35rem;
-      padding: .35rem .75rem;
-      border-radius: 6px;
-      font-size: .78rem;
-      font-weight: 500;
-      margin-bottom: .75rem;
-    }
-    .info-badge.green { background: #f0fdf4; border: 1px solid #bbf7d0; color: #15803d; }
-    .info-badge.blue  { background: #eff6ff; border: 1px solid #bfdbfe; color: #1d4ed8; }
-
-    /* ── Equilibrium summary ─────────────── */
-    .eq-summary {
-      display: flex;
-      gap: .5rem;
-      flex-wrap: wrap;
-      margin-bottom: 1rem;
-    }
+    /* ── Equilibrium badges ─────────────────── */
+    .eq-summary { display: flex; gap: .5rem; flex-wrap: wrap; margin-bottom: .75rem; }
     .eq-badge {
       padding: .3rem .75rem;
       border-radius: 999px;
@@ -224,12 +205,12 @@
     .eq-hub  { background: #dbeafe; color: #1d4ed8; }
     .eq-help { background: #dcfce7; color: #15803d; }
 
-    /* ── Tables ──────────────────────────── */
+    /* ── Tables ─────────────────────────────── */
     .table-wrap {
       overflow-x: auto;
-      margin-top: .75rem;
       border-radius: 8px;
       border: 1px solid var(--border);
+      margin-bottom: .75rem;
     }
     table {
       width: 100%;
@@ -249,7 +230,7 @@
       white-space: nowrap;
     }
     td {
-      padding: .55rem .75rem;
+      padding: .5rem .75rem;
       border-bottom: 1px solid #f1f5f9;
       vertical-align: middle;
     }
@@ -285,7 +266,13 @@
       text-align: center;
     }
 
-    /* ── Loading ─────────────────────────── */
+    .divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 1.25rem 0 1rem;
+    }
+
+    /* ── Loading ────────────────────────────── */
     .loading-row {
       display: flex;
       align-items: center;
@@ -304,7 +291,7 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* ── Toast ───────────────────────────── */
+    /* ── Toast ──────────────────────────────── */
     .toast {
       position: fixed;
       bottom: 1.25rem; right: 1.25rem;
@@ -320,15 +307,12 @@
     .toast.hidden  { display: none; }
     .toast.success { background: var(--success); }
     .toast.error   { background: var(--danger); }
-    .toast.info    { background: var(--primary); }
-    @keyframes slideUp {
-      from { transform: translateY(6px); opacity: 0; }
-      to   { transform: translateY(0);   opacity: 1; }
-    }
-
     .hidden { display: none !important; }
-    .section-divider { border: none; border-top: 1px solid var(--border); margin: .25rem 0; }
   </style>
+  @keyframes slideUp {
+    from { transform: translateY(6px); opacity: 0; }
+    to   { transform: translateY(0);   opacity: 1; }
+  }
 </head>
 <body>
 
@@ -344,7 +328,7 @@
 
 <main class="page-main">
 
-  <!-- Cobo -->
+  <!-- Cobo ID -->
   <div class="card">
     <h2>📊 Planilha Cobo</h2>
     <label>ID da planilha Cobo</label>
@@ -353,16 +337,24 @@
              placeholder="Cole o ID da planilha (parte da URL entre /d/ e /edit)" />
       <button class="btn-inline" id="btn-salvar-cobo" onclick="salvarCoboId()">Salvar</button>
     </div>
-    <p style="font-size:.72rem;color:var(--muted);margin-top:.4rem">
-      A planilha Cobo precisa ter as abas "RDC - Reels" e "Planejamento" criadas, e estar compartilhada com a Service Account.
-    </p>
   </div>
 
   <!-- Ideias -->
   <div class="card">
     <h2>💡 Ideias de Conteúdo</h2>
-    <label>Cole as ideias (uma por linha)</label>
-    <textarea id="ideias-input" placeholder="Ex:&#10;Como crescer no Instagram em 2025&#10;Bastidores da criação de peças de crochê&#10;5 erros que impedem vendas no WhatsApp"></textarea>
+
+    <div class="two-col">
+      <div>
+        <label>🎬 Ideias de Reels (uma por linha)</label>
+        <textarea id="reels-input"
+          placeholder="Ex:&#10;Como crescer no Instagram do zero&#10;3 erros que travam seu negócio online&#10;Bastidores da criação de uma peça"></textarea>
+      </div>
+      <div>
+        <label>📸 Ideias de Fotos / Carrossel (uma por linha)</label>
+        <textarea id="fotos-input"
+          placeholder="Ex:&#10;5 dicas para fotografar produtos em casa&#10;Antes e depois da produção&#10;Guia completo de como encomendar"></textarea>
+      </div>
+    </div>
 
     <label style="margin-top:1rem">Redes sociais ativas</label>
     <div class="check-group">
@@ -373,96 +365,68 @@
     </div>
 
     <div class="btn-row">
-      <button class="btn btn-primary" id="btn-avaliar" onclick="avaliarIdeias()">✨ Avaliar ideias com IA</button>
+      <button class="btn btn-primary" id="btn-analisar" onclick="analisarIdeias()">🤖 Analisar com IA</button>
     </div>
-    <div id="avaliar-loading" class="loading-row hidden">
+    <div id="analisar-loading" class="loading-row hidden">
       <div class="spinner"></div>
-      <span>Avaliando ideias com Claude...</span>
+      <span>Analisando ideias com Claude...</span>
     </div>
   </div>
 
-  <!-- Avaliação -->
-  <div class="card hidden" id="section-avaliacao">
-    <h2>📈 Avaliação das Ideias</h2>
-    <div class="eq-summary" id="eq-summary"></div>
+  <!-- Resultados -->
+  <div class="card hidden" id="section-resultados">
+    <h2>📊 Resultado da Análise</h2>
+
+    <!-- Reels -->
+    <h3>🎬 Reels</h3>
+    <div class="eq-summary" id="eq-reels"></div>
     <div class="table-wrap">
-      <table id="tabela-avaliacao">
+      <table>
         <thead>
           <tr>
-            <th>#</th>
-            <th>Ideia</th>
-            <th>Nota</th>
-            <th>Modelagem</th>
-            <th>Permeabilidade</th>
-            <th>Formato</th>
-            <th>Horário</th>
-            <th>Rede</th>
-            <th>CTA</th>
+            <th>#</th><th>Ideia</th><th>Nota</th><th>Modelagem</th>
+            <th>Permeabilidade</th><th>Formato</th><th>Horário</th><th>Rede</th><th>CTA</th>
           </tr>
         </thead>
-        <tbody id="tabela-avaliacao-body"></tbody>
+        <tbody id="tbody-reels"></tbody>
       </table>
     </div>
-  </div>
 
-  <!-- Planejamento -->
-  <div class="card hidden" id="section-planejamento">
-    <h2>📆 Montar Planejamento Semanal</h2>
-    <label>Dias da semana</label>
-    <div class="check-group">
-      <label><input type="checkbox" class="dia-check" value="Segunda" checked> Segunda</label>
-      <label><input type="checkbox" class="dia-check" value="Terça"   checked> Terça</label>
-      <label><input type="checkbox" class="dia-check" value="Quarta"  checked> Quarta</label>
-      <label><input type="checkbox" class="dia-check" value="Quinta"  checked> Quinta</label>
-      <label><input type="checkbox" class="dia-check" value="Sexta"   checked> Sexta</label>
-      <label><input type="checkbox" class="dia-check" value="Sábado"> Sábado</label>
-      <label><input type="checkbox" class="dia-check" value="Domingo"> Domingo</label>
+    <hr class="divider">
+
+    <!-- Fotos -->
+    <h3>📸 Fotos / Carrossel</h3>
+    <div class="eq-summary" id="eq-fotos"></div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th><th>Ideia</th><th>Nota</th><th>Modelagem</th>
+            <th>Permeabilidade</th><th>Formato</th><th>Horário</th><th>Rede</th><th>CTA</th>
+          </tr>
+        </thead>
+        <tbody id="tbody-fotos"></tbody>
+      </table>
     </div>
+
     <div class="btn-row">
-      <button class="btn btn-primary" id="btn-planejar" onclick="montarPlanejamento()">📅 Montar planejamento</button>
+      <button class="btn btn-success" id="btn-exportar" onclick="exportarParaPlanilha()">
+        📊 Exportar para planilha Cobo
+      </button>
     </div>
-    <div id="planejar-loading" class="loading-row hidden">
+    <div id="exportar-loading" class="loading-row hidden">
       <div class="spinner"></div>
-      <span>Montando planejamento com Claude...</span>
-    </div>
-
-    <div id="section-resultado" class="hidden" style="margin-top:1.25rem">
-      <hr class="section-divider" style="margin-bottom:1.25rem">
-      <h2 style="font-size:.95rem;font-weight:700;margin-bottom:1rem">🗓 Planejamento Semanal</h2>
-      <div class="table-wrap">
-        <table id="tabela-planejamento">
-          <thead>
-            <tr>
-              <th>Dia</th>
-              <th>Conteúdo</th>
-              <th>Modelagem</th>
-              <th>Permeabilidade</th>
-              <th>Formato</th>
-              <th>Horário</th>
-            </tr>
-          </thead>
-          <tbody id="tabela-planejamento-body"></tbody>
-        </table>
-      </div>
-      <div class="btn-row">
-        <button class="btn btn-success" id="btn-exportar" onclick="exportarParaPlanilha()">
-          📊 Exportar para planilha Cobo
-        </button>
-      </div>
-      <div id="exportar-loading" class="loading-row hidden">
-        <div class="spinner"></div>
-        <span>Exportando para o Google Sheets...</span>
-      </div>
+      <span>Exportando para o Google Sheets...</span>
     </div>
   </div>
 
 </main>
 
 <script>
-  const params     = new URLSearchParams(location.search);
-  const clienteId  = params.get('clienteId');
-  let conteudosAvaliados = [];
-  let planejamentoGerado = [];
+  const params    = new URLSearchParams(location.search);
+  const clienteId = params.get('clienteId');
+  let reelsAvaliados = [];
+  let fotosAvaliados = [];
 
   // ── Init ──────────────────────────────────
   async function init() {
@@ -477,14 +441,13 @@
       document.getElementById('cliente-nome').textContent = c?.nome || clienteId;
     } catch { document.getElementById('cliente-nome').textContent = clienteId; }
 
-    // Carrega ID da planilha Cobo salvo
     try {
       const data = await apiFetch('GET', `/api/clientes/${clienteId}/conteudo/planilhaId`);
       if (data.planilhaId) document.getElementById('cobo-id').value = data.planilhaId;
     } catch {}
   }
 
-  // ── API helper ────────────────────────────
+  // ── API ───────────────────────────────────
   async function apiFetch(method, path, body) {
     const opts = { method, headers: { 'Content-Type': 'application/json' } };
     if (body) opts.body = JSON.stringify(body);
@@ -494,7 +457,7 @@
     return data;
   }
 
-  // ── Salvar ID Cobo ────────────────────────
+  // ── Salvar Cobo ID ────────────────────────
   async function salvarCoboId() {
     const planilhaId = document.getElementById('cobo-id').value.trim();
     if (!planilhaId) { showToast('Informe o ID da planilha', 'error'); return; }
@@ -510,48 +473,66 @@
     }
   }
 
-  // ── Avaliar ideias ────────────────────────
-  async function avaliarIdeias() {
-    const txt = document.getElementById('ideias-input').value.trim();
-    if (!txt) { showToast('Cole as ideias antes de avaliar', 'error'); return; }
-    const ideias = txt.split('\n').map((l) => l.trim()).filter(Boolean);
-    const redes  = [...document.querySelectorAll('.rede-check:checked')].map((c) => c.value);
+  // ── Analisar ideias ───────────────────────
+  async function analisarIdeias() {
+    const ideiasReels  = linhas('reels-input');
+    const ideiasFortos = linhas('fotos-input');
+    const redes = [...document.querySelectorAll('.rede-check:checked')].map((c) => c.value);
 
-    const btn = document.getElementById('btn-avaliar');
+    if (!ideiasReels.length && !ideiasFortos.length) {
+      showToast('Cole pelo menos uma ideia antes de analisar', 'error'); return;
+    }
+
+    const btn = document.getElementById('btn-analisar');
     btn.disabled = true;
-    show('avaliar-loading');
+    show('analisar-loading');
+    hide('section-resultados');
+
     try {
-      const data = await apiFetch('POST', `/api/clientes/${clienteId}/conteudo/avaliar`, { ideias, redes });
-      conteudosAvaliados = data.conteudos || [];
-      renderAvaliacao();
-      show('section-avaliacao');
-      show('section-planejamento');
-      document.getElementById('section-avaliacao').scrollIntoView({ behavior: 'smooth' });
+      const data = await apiFetch('POST', `/api/clientes/${clienteId}/conteudo/analisar`, {
+        ideiasReels,
+        ideiasFortos,
+        redes,
+      });
+      reelsAvaliados = data.reels || [];
+      fotosAvaliados = data.fotos || [];
+      renderResultados();
+      show('section-resultados');
+      document.getElementById('section-resultados').scrollIntoView({ behavior: 'smooth' });
     } catch (err) {
-      showToast('Erro ao avaliar: ' + err.message, 'error');
+      showToast('Erro ao analisar: ' + err.message, 'error');
     } finally {
       btn.disabled = false;
-      hide('avaliar-loading');
+      hide('analisar-loading');
     }
   }
 
-  function renderAvaliacao() {
-    const sorted = [...conteudosAvaliados].sort((a, b) => a.ordem - b.ordem);
+  function linhas(id) {
+    return (document.getElementById(id)?.value || '').split('\n').map((l) => l.trim()).filter(Boolean);
+  }
 
-    // Equilíbrio
-    const hero = sorted.filter((c) => c.modelagem === 'HERO').length;
-    const hub  = sorted.filter((c) => c.modelagem === 'HUB').length;
-    const help = sorted.filter((c) => c.modelagem === 'HELP').length;
-    document.getElementById('eq-summary').innerHTML = `
+  // ── Render resultado ──────────────────────
+  function renderResultados() {
+    renderTabela('tbody-reels', 'eq-reels', reelsAvaliados);
+    renderTabela('tbody-fotos', 'eq-fotos', fotosAvaliados);
+  }
+
+  function renderTabela(tbodyId, eqId, lista) {
+    const sorted = [...lista].sort((a, b) => (a.ordem || 99) - (b.ordem || 99));
+
+    const hero = lista.filter((c) => c.modelagem === 'HERO').length;
+    const hub  = lista.filter((c) => c.modelagem === 'HUB').length;
+    const help = lista.filter((c) => c.modelagem === 'HELP').length;
+    document.getElementById(eqId).innerHTML = `
       <span class="eq-badge eq-hero">HERO: ${hero}</span>
       <span class="eq-badge eq-hub">HUB: ${hub}</span>
       <span class="eq-badge eq-help">HELP: ${help}</span>`;
 
-    document.getElementById('tabela-avaliacao-body').innerHTML = sorted.map((c) => `
+    document.getElementById(tbodyId).innerHTML = sorted.map((c) => `
       <tr class="row-${(c.modelagem || '').toLowerCase()}">
-        <td>${c.ordem}</td>
-        <td style="max-width:220px;white-space:normal">${x(c.ideia)}</td>
-        <td><span class="nota-badge">${c.nota}</span></td>
+        <td>${c.ordem ?? ''}</td>
+        <td style="max-width:200px;white-space:normal">${x(c.ideia)}</td>
+        <td><span class="nota-badge">${c.nota ?? ''}</span></td>
         <td><span class="tag tag-${(c.modelagem || '').toLowerCase()}">${x(c.modelagem)}</span></td>
         <td><span class="tag ${tagPermeab(c.permeabilidade)}">${x(c.permeabilidade)}</span></td>
         <td>${x(c.formato)}</td>
@@ -561,58 +542,20 @@
       </tr>`).join('');
   }
 
-  // ── Montar planejamento ───────────────────
-  async function montarPlanejamento() {
-    if (!conteudosAvaliados.length) { showToast('Avalie as ideias primeiro', 'error'); return; }
-    const diasSemana = [...document.querySelectorAll('.dia-check:checked')].map((c) => c.value);
-    if (!diasSemana.length) { showToast('Selecione pelo menos um dia', 'error'); return; }
-
-    const btn = document.getElementById('btn-planejar');
-    btn.disabled = true;
-    show('planejar-loading');
-    try {
-      const data = await apiFetch('POST', `/api/clientes/${clienteId}/conteudo/planejamento`, {
-        conteudos: conteudosAvaliados,
-        diasSemana,
-      });
-      planejamentoGerado = data.semana || [];
-      renderPlanejamento();
-      show('section-resultado');
-      document.getElementById('section-resultado').scrollIntoView({ behavior: 'smooth' });
-    } catch (err) {
-      showToast('Erro ao montar planejamento: ' + err.message, 'error');
-    } finally {
-      btn.disabled = false;
-      hide('planejar-loading');
-    }
-  }
-
-  function renderPlanejamento() {
-    document.getElementById('tabela-planejamento-body').innerHTML = planejamentoGerado.map((p) => `
-      <tr class="row-${(p.modelagem || '').toLowerCase()}">
-        <td><strong>${x(p.dia)}</strong></td>
-        <td style="max-width:240px;white-space:normal">${x(p.conteudo)}</td>
-        <td><span class="tag tag-${(p.modelagem || '').toLowerCase()}">${x(p.modelagem)}</span></td>
-        <td><span class="tag ${tagPermeab(p.permeabilidade)}">${x(p.permeabilidade)}</span></td>
-        <td>${x(p.formato)}</td>
-        <td>${x(p.horario)}</td>
-      </tr>`).join('');
-  }
-
   // ── Exportar ──────────────────────────────
   async function exportarParaPlanilha() {
     const planilhaId = document.getElementById('cobo-id').value.trim();
     if (!planilhaId) { showToast('Informe o ID da planilha Cobo antes de exportar', 'error'); return; }
-    if (!conteudosAvaliados.length || !planejamentoGerado.length) {
-      showToast('Gere a avaliação e o planejamento antes de exportar', 'error'); return;
+    if (!reelsAvaliados.length && !fotosAvaliados.length) {
+      showToast('Analise as ideias antes de exportar', 'error'); return;
     }
     const btn = document.getElementById('btn-exportar');
     btn.disabled = true;
     show('exportar-loading');
     try {
       await apiFetch('POST', `/api/clientes/${clienteId}/conteudo/exportar`, {
-        conteudos: conteudosAvaliados,
-        planejamento: planejamentoGerado,
+        reels: reelsAvaliados,
+        fotos: fotosAvaliados,
         planilhaId,
       });
       showToast('Exportado com sucesso!');

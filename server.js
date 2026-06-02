@@ -445,14 +445,76 @@ O campo justificativa deve explicar em 1 linha por que este conteúdo foi escolh
   }
 });
 
+// POST /api/clientes/:id/conteudo/analisar — avalia reels e fotos em paralelo com Claude
+app.post('/api/clientes/:id/conteudo/analisar', async (req, res) => {
+  const { ideiasReels = [], ideiasFortos = [], redes = [] } = req.body;
+  if (!ideiasReels.length && !ideiasFortos.length) {
+    return res.status(400).json({ error: 'Informe ao menos uma ideia de Reels ou Fotos' });
+  }
+
+  const cleanJson = (t) => t.trim()
+    .replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/, '').trim();
+
+  const camposJson = `{ ideia, demanda, competicao, nota, ordem, modelagem, permeabilidade, formato, conversacao, horario, rede }`;
+  const redesStr   = redes.length ? redes.join(', ') : 'Instagram';
+
+  const promptReels = `Você é especialista em marketing de vídeo no Instagram e TikTok.
+Avalie estas ideias para Reels considerando retenção, hook nos primeiros 3 segundos e potencial viral.
+Redes: ${redesStr}
+
+Para cada ideia retorne um JSON com: ${camposJson}
+- demanda/competicao: 1-5 | nota = demanda * competicao | ordem: ranking (1=melhor)
+- modelagem: HERO | HUB | HELP | permeabilidade: Profundidade | Aderência | AD
+- formato: "Reels 60s" | "Reels 45s" | horario: "12H"|"18H"|"20H"
+- conversacao: CTA curto | rede: a mais indicada das fornecidas
+
+Ideias:
+${ideiasReels.map((id, i) => `${i + 1}. ${id}`).join('\n')}
+
+Retorne APENAS um array JSON válido, sem markdown.`;
+
+  const promptFotos = `Você é especialista em marketing visual para Instagram e WhatsApp.
+Avalie estas ideias para Fotos e Carrossel considerando salvabilidade, clareza visual e potencial de compartilhamento.
+Redes: ${redesStr}
+
+Para cada ideia retorne um JSON com: ${camposJson}
+- demanda/competicao: 1-5 | nota = demanda * competicao | ordem: ranking (1=melhor)
+- modelagem: HERO | HUB | HELP | permeabilidade: Profundidade | Aderência | AD
+- formato: "Carrossel" | "Foto" | "Stories" | horario: "12H"|"18H"|"20H"
+- conversacao: CTA curto | rede: a mais indicada das fornecidas
+
+Ideias:
+${ideiasFortos.map((id, i) => `${i + 1}. ${id}`).join('\n')}
+
+Retorne APENAS um array JSON válido, sem markdown.`;
+
+  try {
+    const empty = { content: [{ text: '[]' }] };
+    const [resReels, resFotos] = await Promise.all([
+      ideiasReels.length
+        ? anthropic.messages.create({ model: 'claude-sonnet-4-6', max_tokens: 4000, messages: [{ role: 'user', content: promptReels }] })
+        : Promise.resolve(empty),
+      ideiasFortos.length
+        ? anthropic.messages.create({ model: 'claude-sonnet-4-6', max_tokens: 4000, messages: [{ role: 'user', content: promptFotos }] })
+        : Promise.resolve(empty),
+    ]);
+
+    const reels = JSON.parse(cleanJson(resReels.content[0].text));
+    const fotos = JSON.parse(cleanJson(resFotos.content[0].text));
+    res.json({ reels, fotos });
+  } catch (err) {
+    res.status(500).json({ error: `Erro ao analisar: ${err.message}` });
+  }
+});
+
 // POST /api/clientes/:id/conteudo/exportar — exporta para planilha Cobo
 app.post('/api/clientes/:id/conteudo/exportar', async (req, res) => {
-  const { conteudos, planejamento, planilhaId } = req.body;
-  if (!conteudos?.length || !planejamento?.length || !planilhaId) {
-    return res.status(400).json({ error: 'conteudos, planejamento e planilhaId são obrigatórios' });
+  const { reels, fotos, planilhaId } = req.body;
+  if (!planilhaId) {
+    return res.status(400).json({ error: 'planilhaId é obrigatório' });
   }
   try {
-    await exportarParaCobo(planilhaId, conteudos, planejamento);
+    await exportarParaCobo(planilhaId, reels || [], fotos || []);
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: `Erro ao exportar: ${err.message}` });
