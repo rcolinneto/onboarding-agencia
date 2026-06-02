@@ -405,32 +405,40 @@ async function exportarParaCobo(planilhaId, conteudos, planejamento) {
       Quinta: 'E', Sexta: 'F', Sábado: 'G', Sabado: 'G', Domingo: 'H',
     };
     const HORARIO_LIN = {
-      '10H': 7, '10h': 7, '12H': 13, '12h': 13,
-      '14H': 16, '14h': 16, '18H': 22, '18h': 22,
-      '20H': 25, '20h': 25, '22H': 28, '22h': 28,
+      '10H': 9,  '10h': 9,
+      '12H': 15, '12h': 15,
+      '14H': 21, '14h': 21,
+      '18H': 24, '18h': 24,
+      '20H': 27, '20h': 27,
+      '22H': 30, '22h': 30,
     };
 
-    // Indexa planejamento por chave dia|horario para detectar o que preencher
+    // Limpa a área de conteúdo antes de escrever
+    await sheets.spreadsheets.values.clear({
+      spreadsheetId: planilhaId,
+      range: 'Planejamento!B9:H30',
+    });
+
+    // Indexa planejamento por chave dia|horario
     const planIdx = {};
     (planejamento || []).forEach((p) => {
       planIdx[`${p.dia}|${p.horario}`] = p.conteudo || '';
     });
 
-    // Gera todas as células da grade (7 dias × 6 horários) com o valor final
-    const planData = [];
-    Object.entries(DIA_COL).forEach(([dia, col]) => {
-      Object.entries(HORARIO_LIN).forEach(([hor, lin]) => {
-        planData.push({
-          range: `Planejamento!${col}${lin}`,
-          values: [[planIdx[`${dia}|${hor}`] || '']],
-        });
-      });
-    });
+    // Gera células apenas para os itens do planejamento
+    const planData = (planejamento || []).map((p) => {
+      const col = DIA_COL[p.dia];
+      const lin = HORARIO_LIN[p.horario] || HORARIO_LIN[(p.horario || '').toUpperCase()];
+      if (!col || !lin) return null;
+      return { range: `Planejamento!${col}${lin}`, values: [[p.conteudo || '']] };
+    }).filter(Boolean);
 
-    await sheets.spreadsheets.values.batchUpdate({
-      spreadsheetId: planilhaId,
-      requestBody: { valueInputOption: 'USER_ENTERED', data: planData },
-    });
+    if (planData.length) {
+      await sheets.spreadsheets.values.batchUpdate({
+        spreadsheetId: planilhaId,
+        requestBody: { valueInputOption: 'USER_ENTERED', data: planData },
+      });
+    }
 
     return { ok: true };
   } catch (err) {
