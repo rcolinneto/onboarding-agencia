@@ -418,17 +418,28 @@ async function exportarParaCobo(planilhaId, conteudos, planejamento) {
 
     if (linhaDias === -1) throw new Error('Linha dos dias não encontrada na aba Planejamento');
 
-    // Detecta linhas dos horários procurando coluna A a partir de linhaDias
-    // Horários possíveis: 10, 12, 14, 18, 20, 22 (compara prefixo "NN:")
+    // Detecta linhas dos horários nas próximas 30 linhas após linhaDias
+    // Verifica se coluna A começa com "10", "12", "14", "18", "20" ou "22"
     const HORAS = ['10', '12', '14', '18', '20', '22'];
     const horLinha = {};
     for (let i = linhaDias; i < Math.min(planSheet.length, linhaDias + 30); i++) {
       const cel = (planSheet[i][0] || '').trim();
       for (const h of HORAS) {
-        if (cel.startsWith(`${h}:`) && !horLinha[h]) {
+        if ((cel.startsWith(`${h}:`) || cel.startsWith(`${h}.`) || cel === h) && !horLinha[h]) {
           horLinha[h] = i + 1; // 1-based
         }
       }
+    }
+
+    // Resolve a linha de um horário: busca exata → mais próxima → padrão 18
+    function resolverLinha(horario) {
+      const num = horNumero(horario || '18H');
+      if (horLinha[num]) return horLinha[num];
+      // Busca o horário registrado mais próximo numericamente
+      const disponiveis = Object.entries(horLinha)
+        .map(([h, l]) => ({ diff: Math.abs(Number(h) - Number(num)), lin: l }))
+        .sort((a, b) => a.diff - b.diff);
+      return disponiveis[0]?.lin || horLinha['18'] || Object.values(horLinha)[0];
     }
 
     const DIA_COL_PLAN = {
@@ -444,10 +455,13 @@ async function exportarParaCobo(planilhaId, conteudos, planejamento) {
       range: `Planejamento!B${clearStart}:H${clearEnd}`,
     });
 
+    // Garante que todos os dias do planejamento sejam escritos
+    // Se o horário não for encontrado, usa o mais próximo disponível
     const planData = (planejamento || []).map((p) => {
       const col = DIA_COL_PLAN[p.dia];
-      const lin = horLinha[horNumero(p.horario)];
-      if (!col || !lin) return null;
+      if (!col) return null;
+      const lin = resolverLinha(p.horario);
+      if (!lin) return null;
       return { range: `Planejamento!${col}${lin}`, values: [[p.conteudo || '']] };
     }).filter(Boolean);
 
