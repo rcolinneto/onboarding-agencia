@@ -23,6 +23,15 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+app.get('/api/debug', (req, res) => {
+  res.json({
+    temCredencial: !!process.env.GOOGLE_CREDENTIALS_BASE64,
+    tamanhoCredencial: process.env.GOOGLE_CREDENTIALS_BASE64?.length || 0,
+    temSheetId: !!process.env.GOOGLE_SHEET_ID,
+    temApiKey: !!process.env.ANTHROPIC_API_KEY,
+  });
+});
+
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
