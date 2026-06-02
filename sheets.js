@@ -372,7 +372,9 @@ async function exportarParaRDCFotos(planilhaId, fotos) {
 }
 
 // Exporta reels e fotos para COBO + RDC Reels + RDC Fotos + Matriz Estratégica
-async function exportarParaCobo(planilhaId, reels, fotos) {
+async function exportarParaCobo(planilhaId, reels, fotos, diasSemana) {
+  const DIAS_PADRAO = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
+  diasSemana = (diasSemana && diasSemana.length) ? diasSemana : DIAS_PADRAO;
   try {
     const sheets   = await getSheets();
     const todos    = [...(reels || []), ...(fotos || [])];
@@ -421,77 +423,82 @@ async function exportarParaCobo(planilhaId, reels, fotos) {
       await exportarParaRDCFotos(planilhaId, fotos);
     } catch (_) { /* aba RDC Fotos opcional */ }
 
-    // ── 4. Aba "Matriz Estratégica - Insta" — top 7 balanceado ───────────────
+    // ── 4. Aba "Matriz Estratégica - Insta" — distribuição pelos dias selecionados ──
     try {
-      // Seleciona top 7: máx 1 HERO, mín 2 HUB, mín 3 HELP
-      // Reclassifica se o pool não tiver conteúdo suficiente de cada tipo
+      const n = Math.min(diasSemana.length, 7); // quantos conteúdos selecionar
+
+      // Quotas de equilíbrio por total de dias
+      // Regra: mín 2 HERO, mín 2 HUB, mín 3 HELP (escala para n < 7)
+      const heroQ = n >= 4 ? 2 : 1;
+      const hubQ  = n >= 4 ? 2 : Math.min(1, n - heroQ);
+      const helpQ = Math.max(0, n - heroQ - hubQ);
+
       const sortedTodos = [...todos].sort((a, b) => (b.nota || 0) - (a.nota || 0));
       const pool = sortedTodos.map((c) => ({ ...c, modelagem: (c.modelagem || '').toUpperCase() }));
-      const top7 = [];
+      const topN = [];
       const usados = new Set();
 
       const pickType = (type, max) => {
-        let n = 0;
+        let picked = 0;
         for (const c of pool) {
-          if (n >= max || top7.length >= 7) break;
+          if (picked >= max || topN.length >= n) break;
           if (!usados.has(c.ideia) && c.modelagem === type) {
-            top7.push({ ...c }); usados.add(c.ideia); n++;
+            topN.push({ ...c }); usados.add(c.ideia); picked++;
           }
         }
       };
 
-      pickType('HERO', 1);  // máx 1 HERO
-      pickType('HUB',  2);  // 2 HUB
-      pickType('HELP', 4);  // até 4 HELP (7 - 1 - 2)
+      pickType('HERO', heroQ);
+      pickType('HUB',  hubQ);
+      pickType('HELP', helpQ + 2); // margem extra de HELP para completar slots
 
       // Preenche slots restantes com qualquer conteúdo
       for (const c of pool) {
-        if (top7.length >= 7) break;
-        if (!usados.has(c.ideia)) { top7.push({ ...c }); usados.add(c.ideia); }
+        if (topN.length >= n) break;
+        if (!usados.has(c.ideia)) { topN.push({ ...c }); usados.add(c.ideia); }
       }
 
-      // Reclassificação para garantir regras obrigatórias
-      const cnt = (t) => top7.filter((s) => s.modelagem === t).length;
+      // Reclassificação para garantir mínimos obrigatórios
+      const cnt = (t) => topN.filter((s) => s.modelagem === t).length;
 
-      // Regra 1: máx 1 HERO — reclassifica extras como HELP
-      if (cnt('HERO') > 1) {
-        top7.filter((s) => s.modelagem === 'HERO')
-          .sort((a, b) => (a.nota || 0) - (b.nota || 0))    // menor nota primeiro
-          .slice(0, cnt('HERO') - 1)
-          .forEach((s) => { s.modelagem = 'HELP'; });
+      // mín 2 HERO: reclassifica melhores não-HERO como HERO
+      while (cnt('HERO') < heroQ) {
+        const cand = topN
+          .filter((s) => s.modelagem !== 'HERO')
+          .sort((a, b) => (b.nota || 0) - (a.nota || 0))[0]; // maior nota
+        if (!cand) break;
+        cand.modelagem = 'HERO';
       }
 
-      // Regra 2: mín 2 HUB — reclassifica HELP de menor nota como HUB
-      while (cnt('HUB') < 2) {
-        const candidato = top7
+      // mín 2 HUB: reclassifica HELP de menor nota como HUB
+      while (cnt('HUB') < hubQ) {
+        const cand = topN
           .filter((s) => s.modelagem === 'HELP')
-          .sort((a, b) => (a.nota || 0) - (b.nota || 0))[0];
-        if (!candidato) break;
-        candidato.modelagem = 'HUB';
+          .sort((a, b) => (a.nota || 0) - (b.nota || 0))[0]; // menor nota
+        if (!cand) break;
+        cand.modelagem = 'HUB';
       }
 
-      // Regra 3: mín 3 HELP — reclassifica HUB excedente (>2) como HELP
-      while (cnt('HELP') < 3 && cnt('HUB') > 2) {
-        const candidato = top7
+      // mín 3 HELP (quando n=7): reclassifica HUB excedente como HELP
+      while (cnt('HELP') < helpQ && cnt('HUB') > hubQ) {
+        const cand = topN
           .filter((s) => s.modelagem === 'HUB')
-          .sort((a, b) => (a.nota || 0) - (b.nota || 0))[0];
-        if (!candidato) break;
-        candidato.modelagem = 'HELP';
+          .sort((a, b) => (a.nota || 0) - (b.nota || 0))[0]; // menor nota
+        if (!cand) break;
+        cand.modelagem = 'HELP';
       }
 
       // Mapa ideia → conteudo (para CTA)
       const ideiaMapa = {};
       todos.forEach((c) => { ideiaMapa[c.ideia] = c; });
 
-      // Atribui dias: Segunda→Domingo
-      const DIAS_MAT   = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
       const DIA_COL_MAT = {
         Segunda: 'D', Terça: 'E', Terca: 'E', Quarta: 'F',
         Quinta: 'G', Sexta: 'H', Sábado: 'I', Sabado: 'I', Domingo: 'J',
       };
 
-      const matrizPlan = top7.map((c, i) => ({
-        dia:            DIAS_MAT[i],
+      const matrizPlan = topN.map((c, i) => ({
+        dia:            diasSemana[i],
         conteudo:       c.ideia,
         modelagem:      c.modelagem,
         permeabilidade: c.permeabilidade,

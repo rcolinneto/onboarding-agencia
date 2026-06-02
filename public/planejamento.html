@@ -409,6 +409,19 @@
       </table>
     </div>
 
+    <hr class="divider">
+
+    <label>Dias da semana para a Matriz Estratégica</label>
+    <div class="check-group">
+      <label><input type="checkbox" class="dia-check" value="Segunda" checked> Segunda</label>
+      <label><input type="checkbox" class="dia-check" value="Terça"   checked> Terça</label>
+      <label><input type="checkbox" class="dia-check" value="Quarta"  checked> Quarta</label>
+      <label><input type="checkbox" class="dia-check" value="Quinta"  checked> Quinta</label>
+      <label><input type="checkbox" class="dia-check" value="Sexta"   checked> Sexta</label>
+      <label><input type="checkbox" class="dia-check" value="Sábado"> Sábado</label>
+      <label><input type="checkbox" class="dia-check" value="Domingo"> Domingo</label>
+    </div>
+
     <div class="btn-row">
       <button class="btn btn-success" id="btn-exportar" onclick="exportarParaPlanilha()">
         📊 Exportar para planilha Cobo
@@ -549,6 +562,9 @@
     if (!reelsAvaliados.length && !fotosAvaliados.length) {
       showToast('Analise as ideias antes de exportar', 'error'); return;
     }
+    const diasSemana = [...document.querySelectorAll('.dia-check:checked')].map((c) => c.value);
+    if (!diasSemana.length) { showToast('Selecione ao menos um dia da semana', 'error'); return; }
+
     const btn = document.getElementById('btn-exportar');
     btn.disabled = true;
     show('exportar-loading');
@@ -557,6 +573,7 @@
         reels: reelsAvaliados,
         fotos: fotosAvaliados,
         planilhaId,
+        diasSemana,
       });
       showToast('Exportado com sucesso!');
     } catch (err) {

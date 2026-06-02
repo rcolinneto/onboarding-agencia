@@ -509,12 +509,12 @@ Retorne APENAS um array JSON válido, sem markdown.`;
 
 // POST /api/clientes/:id/conteudo/exportar — exporta para planilha Cobo
 app.post('/api/clientes/:id/conteudo/exportar', async (req, res) => {
-  const { reels, fotos, planilhaId } = req.body;
+  const { reels, fotos, planilhaId, diasSemana } = req.body;
   if (!planilhaId) {
     return res.status(400).json({ error: 'planilhaId é obrigatório' });
   }
   try {
-    await exportarParaCobo(planilhaId, reels || [], fotos || []);
+    await exportarParaCobo(planilhaId, reels || [], fotos || [], diasSemana);
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: `Erro ao exportar: ${err.message}` });
