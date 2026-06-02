@@ -3,7 +3,10 @@ const { google } = require('googleapis');
 const path = require('path');
 
 const SHEET_ID = process.env.GOOGLE_SHEET_ID;
-const SCOPES = ['https://www.googleapis.com/auth/spreadsheets'];
+const SCOPES = [
+  'https://www.googleapis.com/auth/spreadsheets',
+  'https://www.googleapis.com/auth/documents.readonly',
+];
 
 async function getSheets() {
   let auth;
@@ -28,6 +31,23 @@ async function getSheets() {
   }
 
   return google.sheets({ version: 'v4', auth });
+}
+
+async function getDocs() {
+  const fs = require('fs');
+  const credPath = path.join(__dirname, 'credentials.json');
+  let auth;
+  if (fs.existsSync(credPath)) {
+    auth = new google.auth.GoogleAuth({ keyFile: credPath, scopes: SCOPES });
+  } else if (process.env.GOOGLE_CREDENTIALS_BASE64) {
+    const credentials = JSON.parse(
+      Buffer.from(process.env.GOOGLE_CREDENTIALS_BASE64, 'base64').toString('utf8')
+    );
+    auth = new google.auth.GoogleAuth({ credentials, scopes: SCOPES });
+  } else {
+    throw new Error('Nenhuma credencial do Google encontrada');
+  }
+  return google.docs({ version: 'v1', auth });
 }
 
 function gerarId() {
@@ -309,6 +329,68 @@ async function buscarEtapas(clienteId) {
   }
 }
 
+// Salva ID do Google Doc de referências na coluna I da aba Clientes
+async function salvarDocReferencias(clienteId, docId) {
+  try {
+    const sheets = await getSheets();
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID,
+      range: 'Clientes',
+    });
+    const rows = res.data.values || [];
+    const rowIndex = rows.findIndex((row) => row[0] === clienteId);
+    if (rowIndex === -1) throw new Error(`Cliente ${clienteId} não encontrado.`);
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SHEET_ID,
+      range: `Clientes!I${rowIndex + 1}`,
+      valueInputOption: 'USER_ENTERED',
+      requestBody: { values: [[docId]] },
+    });
+    return { clienteId, docId };
+  } catch (err) {
+    throw new Error(`salvarDocReferencias: ${err.message}`);
+  }
+}
+
+// Busca ID do Google Doc de referências na coluna I da aba Clientes
+async function buscarDocReferencias(clienteId) {
+  try {
+    const sheets = await getSheets();
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID,
+      range: 'Clientes',
+    });
+    const rows = res.data.values || [];
+    const row = rows.find((r) => r[0] === clienteId);
+    if (!row) throw new Error(`Cliente ${clienteId} não encontrado.`);
+    return row[8] || ''; // coluna I (índice 8)
+  } catch (err) {
+    throw new Error(`buscarDocReferencias: ${err.message}`);
+  }
+}
+
+// Lê um Google Doc e retorna o texto extraído
+async function lerDocGoogle(docId) {
+  try {
+    const docs = await getDocs();
+    const doc = await docs.documents.get({ documentId: docId });
+    const linhas = [];
+    for (const el of (doc.data.body?.content || [])) {
+      if (el.paragraph) {
+        const linha = (el.paragraph.elements || [])
+          .map((e) => e.textRun?.content || '')
+          .join('')
+          .replace(/\n$/, '')
+          .trim();
+        if (linha) linhas.push(linha);
+      }
+    }
+    return linhas.join('\n');
+  } catch (err) {
+    throw new Error(`lerDocGoogle: ${err.message}`);
+  }
+}
+
 // Salva ID da planilha Cobo na coluna H da aba Clientes
 async function salvarPlanilhaCobo(clienteId, planilhaId) {
   try {
@@ -567,6 +649,9 @@ module.exports = {
   buscarDiagnostico,
   salvarAcessos,
   buscarAcessos,
+  salvarDocReferencias,
+  buscarDocReferencias,
+  lerDocGoogle,
   salvarPlanilhaCobo,
   buscarPlanilhaCobo,
   exportarParaCobo,

@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reunião Mensal</title>
+  <style>
+    :root {
+      --navy:    #0f172a;
+      --bg:      #f1f5f9;
+      --white:   #ffffff;
+      --primary: #4f46e5;
+      --primary-hov: #4338ca;
+      --success: #16a34a;
+      --danger:  #dc2626;
+      --text:    #0f172a;
+      --muted:   #64748b;
+      --border:  #e2e8f0;
+      --shadow:  0 1px 3px rgba(0,0,0,.08);
+      --r: 8px;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      font-size: 14px;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── Header ─────────────────────────────── */
+    .page-header {
+      background: var(--navy);
+      color: #fff;
+      padding: .9rem 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .btn-voltar {
+      background: rgba(255,255,255,.1);
+      border: 1px solid rgba(255,255,255,.15);
+      color: #fff;
+      padding: .35rem .75rem;
+      border-radius: 6px;
+      font-size: .78rem;
+      font-weight: 500;
+      cursor: pointer;
+      text-decoration: none;
+      white-space: nowrap;
+      transition: background .15s;
+    }
+    .btn-voltar:hover { background: rgba(255,255,255,.18); }
+    .header-info h1 { font-size: 1rem; font-weight: 700; }
+    .header-info p  { font-size: .78rem; color: rgba(255,255,255,.6); margin-top: .1rem; }
+
+    /* ── Main ───────────────────────────────── */
+    .page-main {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 1.5rem 1.25rem 4rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    /* ── Card ───────────────────────────────── */
+    .card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 1.25rem 1.5rem;
+      box-shadow: var(--shadow);
+    }
+    .card h2 {
+      font-size: .95rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+      color: var(--text);
+    }
+
+    /* ── Forms ──────────────────────────────── */
+    label {
+      display: block;
+      font-size: .74rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .03em;
+      margin-bottom: .3rem;
+      margin-top: .8rem;
+    }
+    label:first-of-type { margin-top: 0; }
+    input[type="text"] {
+      width: 100%;
+      padding: .55rem .7rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: .875rem;
+      font-family: inherit;
+      color: var(--text);
+      background: var(--white);
+      transition: border-color .15s;
+    }
+    input[type="text"]:focus { outline: none; border-color: var(--primary); }
+    .input-row { display: flex; gap: .45rem; align-items: center; }
+    .input-row input { flex: 1; }
+
+    /* ── Buttons ────────────────────────────── */
+    .btn {
+      padding: .55rem 1.1rem;
+      border: none;
+      border-radius: 6px;
+      font-size: .83rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity .15s;
+      white-space: nowrap;
+    }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover:not(:disabled) { background: var(--primary-hov); }
+    .btn-success { background: var(--success); color: #fff; }
+    .btn-success:hover:not(:disabled) { background: #15803d; }
+    .btn-outline {
+      background: none;
+      border: 1px solid var(--primary);
+      color: var(--primary);
+      padding: .5rem 1rem;
+      border-radius: 6px;
+      font-size: .83rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .btn-outline:hover { background: var(--primary); color: #fff; }
+    .btn-inline {
+      padding: .52rem .85rem;
+      background: none;
+      border: 1px solid var(--primary);
+      color: var(--primary);
+      border-radius: 6px;
+      font-size: .78rem;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all .15s;
+      flex-shrink: 0;
+    }
+    .btn-inline:hover { background: var(--primary); color: #fff; }
+    .btn-inline.ok    { border-color: var(--success); color: var(--success); }
+    .btn-inline.ok:hover { background: var(--success); color: #fff; }
+    .btn-row {
+      display: flex;
+      gap: .6rem;
+      margin-top: 1.1rem;
+      flex-wrap: wrap;
+    }
+
+    /* ── Referências preview ─────────────────── */
+    .ref-preview {
+      margin-top: .85rem;
+      padding: .85rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: .8rem;
+      line-height: 1.65;
+      color: var(--text);
+      white-space: pre-wrap;
+      max-height: 260px;
+      overflow-y: auto;
+    }
+    .ref-preview::-webkit-scrollbar { width: 4px; }
+    .ref-preview::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    /* ── Resultado (pauta) ───────────────────── */
+    .pauta-output {
+      margin-top: .85rem;
+      padding: 1rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: .84rem;
+      line-height: 1.75;
+      max-height: 60vh;
+      overflow-y: auto;
+    }
+    .pauta-output::-webkit-scrollbar { width: 4px; }
+    .pauta-output::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    .pauta-output h1, .pauta-output h2, .pauta-output h3 {
+      margin: .9rem 0 .3rem; color: var(--text); line-height: 1.3;
+    }
+    .pauta-output h1 { font-size: 1rem; }
+    .pauta-output h2 { font-size: .93rem; }
+    .pauta-output h3 { font-size: .86rem; }
+    .pauta-output ul { margin: .35rem 0 .35rem 1.1rem; }
+    .pauta-output li { margin-bottom: .15rem; }
+    .pauta-output p  { margin: .3rem 0; }
+    .pauta-output strong { color: var(--text); }
+
+    /* ── Divider ────────────────────────────── */
+    .divider { border: none; border-top: 1px solid var(--border); margin: 1rem 0; }
+
+    /* ── Loading ────────────────────────────── */
+    .loading-row {
+      display: flex;
+      align-items: center;
+      gap: .65rem;
+      color: var(--muted);
+      font-size: .84rem;
+      padding: .75rem 0;
+    }
+    .spinner {
+      width: 18px; height: 18px;
+      border: 2px solid var(--border);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin .55s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Toast ──────────────────────────────── */
+    .toast {
+      position: fixed;
+      bottom: 1.25rem; right: 1.25rem;
+      padding: .6rem 1rem;
+      border-radius: 8px;
+      font-size: .83rem;
+      font-weight: 500;
+      color: #fff;
+      z-index: 200;
+      box-shadow: 0 4px 14px rgba(0,0,0,.16);
+      animation: slideUp .18s ease;
+    }
+    .toast.hidden  { display: none; }
+    .toast.success { background: var(--success); }
+    .toast.error   { background: var(--danger); }
+    .hidden { display: none !important; }
+    @keyframes slideUp {
+      from { transform: translateY(6px); opacity: 0; }
+      to   { transform: translateY(0);   opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+
+<header class="page-header">
+  <a href="/" class="btn-voltar">← Voltar</a>
+  <div class="header-info">
+    <h1>📋 Reunião Mensal</h1>
+    <p id="cliente-nome">Carregando...</p>
+  </div>
+</header>
+
+<div id="toast" class="toast hidden"></div>
+
+<main class="page-main">
+
+  <!-- Banco de Referências -->
+  <div class="card">
+    <h2>📚 Banco de Referências</h2>
+    <label>ID ou URL do Google Doc de referências</label>
+    <div class="input-row">
+      <input id="doc-id" type="text"
+             placeholder="Cole o ID do documento (parte da URL entre /d/ e /edit)" />
+      <button class="btn-inline" id="btn-salvar-doc" onclick="salvarDocId()">Salvar</button>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-outline" id="btn-carregar-refs" onclick="carregarReferencias()">
+        📄 Carregar referências
+      </button>
+    </div>
+    <div id="refs-loading" class="loading-row hidden">
+      <div class="spinner"></div>
+      <span>Lendo documento...</span>
+    </div>
+    <div id="refs-preview" class="ref-preview hidden"></div>
+  </div>
+
+  <!-- Material da Reunião -->
+  <div class="card">
+    <h2>🎯 Gerar Material da Reunião</h2>
+    <p style="color:var(--muted);font-size:.82rem;margin-bottom:1rem">
+      Utiliza o diagnóstico salvo e as referências carregadas para gerar o material.
+    </p>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" id="btn-apres" onclick="gerarApresentacao()">
+        🖥 Gerar apresentação de alinhamento
+      </button>
+      <button class="btn btn-success" id="btn-pauta" onclick="gerarPauta()">
+        📋 Gerar pauta da reunião
+      </button>
+    </div>
+    <div id="apres-loading" class="loading-row hidden">
+      <div class="spinner"></div>
+      <span>Gerando slides com Claude...</span>
+    </div>
+    <div id="pauta-loading" class="loading-row hidden">
+      <div class="spinner"></div>
+      <span>Gerando pauta com Claude...</span>
+    </div>
+  </div>
+
+  <!-- Resultado da pauta -->
+  <div class="card hidden" id="card-pauta">
+    <h2>📋 Pauta da Reunião</h2>
+    <div id="pauta-output" class="pauta-output"></div>
+    <div class="btn-row">
+      <button class="btn btn-outline" onclick="copiarPauta()">Copiar pauta</button>
+    </div>
+  </div>
+
+</main>
+
+<script>
+  const params    = new URLSearchParams(location.search);
+  const clienteId = params.get('clienteId');
+  let ultimaPauta = '';
+
+  // ── Init ──────────────────────────────────
+  async function init() {
+    if (!clienteId) {
+      document.getElementById('cliente-nome').textContent = 'clienteId não informado';
+      return;
+    }
+    try {
+      const data = await apiFetch('GET', '/api/clientes');
+      const c = (data.clientes || []).find((x) => x.id === clienteId);
+      document.title = c ? `Reunião — ${c.nome}` : 'Reunião Mensal';
+      document.getElementById('cliente-nome').textContent = c?.nome || clienteId;
+    } catch { document.getElementById('cliente-nome').textContent = clienteId; }
+
+    // Carrega doc ID salvo
+    try {
+      const data = await apiFetch('GET', `/api/clientes/${clienteId}/reuniao/docId`);
+      if (data.docId) document.getElementById('doc-id').value = data.docId;
+    } catch {}
+  }
+
+  // ── API ───────────────────────────────────
+  async function apiFetch(method, path, body) {
+    const opts = { method, headers: { 'Content-Type': 'application/json' } };
+    if (body) opts.body = JSON.stringify(body);
+    const res  = await fetch(path, opts);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    return data;
+  }
+
+  // ── Salvar doc ID ─────────────────────────
+  async function salvarDocId() {
+    const rawId = document.getElementById('doc-id').value.trim();
+    if (!rawId) { showToast('Informe o ID do documento', 'error'); return; }
+    // Extrai ID de URL se colado como URL completa
+    const docId = rawId.match(/\/d\/([a-zA-Z0-9_-]+)/)?.[1] || rawId;
+    document.getElementById('doc-id').value = docId;
+
+    const btn = document.getElementById('btn-salvar-doc');
+    btn.disabled = true; btn.textContent = 'Salvando...';
+    try {
+      await apiFetch('PATCH', `/api/clientes/${clienteId}/reuniao/docId`, { docId });
+      btn.textContent = '✓ Salvo'; btn.className = 'btn-inline ok';
+      setTimeout(() => { btn.textContent = 'Salvar'; btn.className = 'btn-inline'; btn.disabled = false; }, 2500);
+    } catch (err) {
+      showToast('Erro ao salvar: ' + err.message, 'error');
+      btn.disabled = false; btn.textContent = 'Salvar';
+    }
+  }
+
+  // ── Carregar referências ──────────────────
+  async function carregarReferencias() {
+    const docId = document.getElementById('doc-id').value.trim();
+    if (!docId) { showToast('Informe o ID do documento antes de carregar', 'error'); return; }
+
+    const btn = document.getElementById('btn-carregar-refs');
+    btn.disabled = true;
+    show('refs-loading');
+    hide('refs-preview');
+
+    try {
+      const data = await apiFetch('GET',
+        `/api/clientes/${clienteId}/reuniao/referencias?docId=${encodeURIComponent(docId)}`
+      );
+      const preview = document.getElementById('refs-preview');
+      preview.textContent = data.referencias || '(documento vazio)';
+      show('refs-preview');
+      showToast('Referências carregadas!');
+    } catch (err) {
+      showToast('Erro ao carregar: ' + err.message, 'error');
+    } finally {
+      btn.disabled = false;
+      hide('refs-loading');
+    }
+  }
+
+  // ── Gerar apresentação ────────────────────
+  async function gerarApresentacao() {
+    // Abre janela antes do await para evitar bloqueio de popup
+    const win = window.open('about:blank', '_blank');
+
+    const btn = document.getElementById('btn-apres');
+    btn.disabled = true;
+    show('apres-loading');
+
+    try {
+      const data = await apiFetch('POST', `/api/clientes/${clienteId}/reuniao/apresentacao`, {});
+      localStorage.setItem('apresentacao_data', JSON.stringify({
+        slides:        data.slides,
+        nomeCliente:   data.nomeCliente,
+        corPrimaria:   '#4f46e5',
+        corSecundaria: '#0f172a',
+        logo:          '',
+      }));
+      if (win && !win.closed) {
+        win.location.href = '/apresentacao.html';
+      } else {
+        window.open('/apresentacao.html', '_blank');
+      }
+      showToast('Apresentação gerada!');
+    } catch (err) {
+      if (win && !win.closed) win.close();
+      showToast('Erro ao gerar apresentação: ' + err.message, 'error');
+    } finally {
+      btn.disabled = false;
+      hide('apres-loading');
+    }
+  }
+
+  // ── Gerar pauta ───────────────────────────
+  async function gerarPauta() {
+    const btn = document.getElementById('btn-pauta');
+    btn.disabled = true;
+    show('pauta-loading');
+    hide('card-pauta');
+
+    try {
+      const data = await apiFetch('POST', `/api/clientes/${clienteId}/reuniao/pauta`, {});
+      ultimaPauta = data.pauta;
+      document.getElementById('pauta-output').innerHTML = renderMarkdown(data.pauta);
+      show('card-pauta');
+      document.getElementById('card-pauta').scrollIntoView({ behavior: 'smooth' });
+      showToast('Pauta gerada!');
+    } catch (err) {
+      showToast('Erro ao gerar pauta: ' + err.message, 'error');
+    } finally {
+      btn.disabled = false;
+      hide('pauta-loading');
+    }
+  }
+
+  async function copiarPauta() {
+    if (!ultimaPauta) return;
+    try {
+      await navigator.clipboard.writeText(ultimaPauta);
+      showToast('Pauta copiada!');
+    } catch {
+      showToast('Não foi possível copiar', 'error');
+    }
+  }
+
+  // ── Markdown renderer ─────────────────────
+  function renderMarkdown(text) {
+    const lines = escHtml(text).split('\n');
+    let html = '', inList = false;
+    for (const line of lines) {
+      if (line.startsWith('### '))      { closeList(); html += `<h3>${fmt(line.slice(4))}</h3>`; }
+      else if (line.startsWith('## ')) { closeList(); html += `<h2>${fmt(line.slice(3))}</h2>`; }
+      else if (line.startsWith('# '))  { closeList(); html += `<h1>${fmt(line.slice(2))}</h1>`; }
+      else if (/^[-*] /.test(line))    { if (!inList) { html += '<ul>'; inList = true; } html += `<li>${fmt(line.slice(2))}</li>`; }
+      else if (line.trim() === '')     { closeList(); html += '<br>'; }
+      else                              { closeList(); html += `<p>${fmt(line)}</p>`; }
+    }
+    if (inList) html += '</ul>';
+    return html;
+    function closeList() { if (inList) { html += '</ul>'; inList = false; } }
+  }
+  function fmt(s) {
+    return s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.+?)\*/g, '<em>$1</em>')
+            .replace(/`(.+?)`/g, '<code>$1</code>');
+  }
+  function escHtml(s) {
+    return String(s ?? '')
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // ── Helpers ───────────────────────────────
+  function show(id) { document.getElementById(id)?.classList.remove('hidden'); }
+  function hide(id) { document.getElementById(id)?.classList.add('hidden'); }
+
+  let toastTimer;
+  function showToast(msg, type = 'success') {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.className   = `toast ${type}`;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.add('hidden'), 3500);
+  }
+
+  init();
+</script>
+</body>
+</html>

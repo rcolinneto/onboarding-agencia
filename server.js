@@ -12,6 +12,9 @@ const {
   buscarDiagnostico,
   salvarAcessos,
   buscarAcessos,
+  salvarDocReferencias,
+  buscarDocReferencias,
+  lerDocGoogle,
   salvarPlanilhaCobo,
   buscarPlanilhaCobo,
   exportarParaCobo,
@@ -518,6 +521,150 @@ app.post('/api/clientes/:id/conteudo/exportar', async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: `Erro ao exportar: ${err.message}` });
+  }
+});
+
+// ── Reunião Mensal ────────────────────────────────────
+
+// GET /api/clientes/:id/reuniao/docId
+app.get('/api/clientes/:id/reuniao/docId', async (req, res) => {
+  try {
+    const docId = await buscarDocReferencias(req.params.id);
+    res.json({ docId });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PATCH /api/clientes/:id/reuniao/docId
+app.patch('/api/clientes/:id/reuniao/docId', async (req, res) => {
+  const { docId } = req.body;
+  if (!docId) return res.status(400).json({ error: 'docId é obrigatório' });
+  try {
+    await salvarDocReferencias(req.params.id, docId);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/clientes/:id/reuniao/referencias — lê o Google Doc e retorna texto
+app.get('/api/clientes/:id/reuniao/referencias', async (req, res) => {
+  try {
+    const docId = req.query.docId?.trim() || await buscarDocReferencias(req.params.id);
+    if (!docId) return res.status(400).json({ error: 'ID do documento não configurado' });
+    const referencias = await lerDocGoogle(docId);
+    res.json({ referencias });
+  } catch (err) {
+    res.status(500).json({ error: `Erro ao ler referências: ${err.message}` });
+  }
+});
+
+// POST /api/clientes/:id/reuniao/apresentacao — gera slides JSON para a reunião
+app.post('/api/clientes/:id/reuniao/apresentacao', async (req, res) => {
+  const clienteId = req.params.id;
+  try {
+    let nomeCliente = clienteId;
+    try {
+      const todos = await listarClientes();
+      const c = todos.find((x) => x.id === clienteId);
+      if (c) nomeCliente = c.nome;
+    } catch {}
+
+    let diagnostico = '';
+    try { diagnostico = await buscarDiagnostico(clienteId); } catch {}
+
+    let referencias = '';
+    try {
+      const docId = await buscarDocReferencias(clienteId);
+      if (docId) referencias = await lerDocGoogle(docId);
+    } catch {}
+
+    const prompt = `Você é especialista em marketing digital. Gere uma apresentação de alinhamento mensal para "${nomeCliente}".
+
+DIAGNÓSTICO:
+${diagnostico || 'Não disponível'}
+
+BANCO DE REFERÊNCIAS:
+${referencias || 'Não disponível'}
+
+Retorne APENAS um JSON válido, sem markdown:
+{
+  "slides": [
+    { "tipo": "capa", "titulo": "Reunião de Alinhamento", "subtitulo": "${nomeCliente}" },
+    { "tipo": "diagnostico", "titulo": "Diagnóstico Atual", "pontos": ["..."] },
+    { "tipo": "planejamento", "titulo": "Planejamento de Conteúdo", "conteudos": ["..."] },
+    { "tipo": "referencias", "titulo": "Referências de Conteúdo", "destaque": "...", "links": ["..."] },
+    { "tipo": "execucao", "titulo": "Próximos Passos", "pontos": ["..."] },
+    { "tipo": "validacao", "titulo": "Validação e Alinhamento", "perguntas": ["..."] },
+    { "tipo": "encerramento", "titulo": "Próxima Reunião", "subtitulo": "..." }
+  ]
+}
+
+Gere 7 slides baseados no diagnóstico e nas referências do cliente.`;
+
+    const result = await anthropic.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 3000,
+      messages: [{ role: 'user', content: prompt }],
+    });
+
+    const raw = result.content[0].text.trim()
+      .replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/, '').trim();
+    const data = JSON.parse(raw);
+    res.json({ ...data, nomeCliente });
+  } catch (err) {
+    res.status(500).json({ error: `Erro ao gerar apresentação: ${err.message}` });
+  }
+});
+
+// POST /api/clientes/:id/reuniao/pauta — gera pauta em markdown
+app.post('/api/clientes/:id/reuniao/pauta', async (req, res) => {
+  const clienteId = req.params.id;
+  try {
+    let nomeCliente = clienteId;
+    try {
+      const todos = await listarClientes();
+      const c = todos.find((x) => x.id === clienteId);
+      if (c) nomeCliente = c.nome;
+    } catch {}
+
+    let diagnostico = '';
+    try { diagnostico = await buscarDiagnostico(clienteId); } catch {}
+
+    let referencias = '';
+    try {
+      const docId = await buscarDocReferencias(clienteId);
+      if (docId) referencias = await lerDocGoogle(docId);
+    } catch {}
+
+    const prompt = `Você é estrategista de marketing digital. Gere uma pauta completa em markdown para a Reunião Mensal de Alinhamento com o cliente "${nomeCliente}".
+
+DIAGNÓSTICO DO CLIENTE:
+${diagnostico || 'Não disponível'}
+
+BANCO DE REFERÊNCIAS (perfis e conteúdos de inspiração):
+${referencias || 'Não disponível'}
+
+A pauta deve conter:
+1. **Abertura** (5 min)
+2. **Resultados e Diagnóstico** — revisão do período com perguntas baseadas no diagnóstico
+3. **Validação do Planejamento de Conteúdo** — para cada formato, mostra referências e pede aprovação
+4. **Sugestões de Ajustes**
+5. **Próximos Passos** — ações com responsáveis e prazos
+6. **Perguntas e Alinhamentos Finais**
+
+Para cada seção, inclua perguntas-chave específicas ao perfil do cliente.`;
+
+    const result = await anthropic.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 4000,
+      messages: [{ role: 'user', content: prompt }],
+    });
+
+    res.json({ pauta: result.content[0].text });
+  } catch (err) {
+    res.status(500).json({ error: `Erro ao gerar pauta: ${err.message}` });
   }
 });
 

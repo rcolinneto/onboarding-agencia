@@ -481,19 +481,25 @@
 
     let html = '';
 
-    if (s.type === 'capa') {
+    // Suporta campo 'tipo' (reunião) ou 'type' (planejamento)
+    const tipo = s.tipo || s.type || 'conteudo';
+    // Normaliza lista de pontos para novos tipos de slide
+    const normalizarPontos = (sl) =>
+      sl.pontos || sl.conteudos || sl.perguntas || sl.links || [];
+
+    if (tipo === 'capa') {
       html = `
         <div class="slide slide-capa ${anim}">
           ${logoH}
           <div class="capa-inner">
-            <span class="capa-tag">✦ Apresentação Estratégica</span>
+            <span class="capa-tag">✦ ${s.subtitulo ? 'Reunião Mensal' : 'Apresentação Estratégica'}</span>
             <h1 class="capa-titulo">${x(s.titulo || '')}</h1>
             <div class="capa-divider"></div>
             ${s.subtitulo ? `<p class="capa-subtitulo">${x(s.subtitulo)}</p>` : ''}
           </div>
         </div>`;
 
-    } else if (s.type === 'destaque') {
+    } else if (tipo === 'destaque') {
       html = `
         <div class="slide slide-destaque ${anim}">
           ${logoH}
@@ -504,7 +510,7 @@
           </div>
         </div>`;
 
-    } else if (s.type === 'encerramento') {
+    } else if (tipo === 'encerramento') {
       html = `
         <div class="slide slide-encerramento ${anim}">
           ${logoH}
@@ -516,11 +522,17 @@
         </div>`;
 
     } else {
-      const itens = (s.pontos || []).map((p, i) => `
+      // Tipos: conteudo, diagnostico, planejamento, referencias, execucao, validacao
+      const lista = normalizarPontos(s);
+      const itens = lista.map((p, i) => `
         <div class="conteudo-item" style="animation-delay:${i * .07}s">
           <span class="conteudo-dot"></span>
           <span>${x(p)}</span>
         </div>`).join('');
+
+      const extra = s.destaque
+        ? `<div style="margin-bottom:.75rem;font-style:italic;opacity:.7;font-size:.9em">${x(s.destaque)}</div>`
+        : '';
 
       html = `
         <div class="slide slide-conteudo ${anim}">
@@ -529,6 +541,7 @@
           <div class="conteudo-inner">
             <div class="conteudo-label">Slide ${idx + 1} de ${total}</div>
             <h2 class="conteudo-titulo">${x(s.titulo || '')}</h2>
+            ${extra}
             <div class="conteudo-lista">${itens}</div>
           </div>
         </div>`;

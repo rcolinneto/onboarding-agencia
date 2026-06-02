@@ -163,8 +163,12 @@ function renderChecklist() {
     <div class="cl-header">
       <div class="cl-header-top">
         <h2>${esc(clienteAtual.nome)}</h2>
-        <a href="/planejamento.html?clienteId=${esc(clienteAtual.id)}"
-           class="btn-planejamento" target="_blank">📅 Planejamento de Conteúdo</a>
+        <div style="display:flex;gap:.4rem;flex-wrap:wrap">
+          <a href="/planejamento.html?clienteId=${esc(clienteAtual.id)}"
+             class="btn-planejamento" target="_blank">📅 Planejamento</a>
+          <a href="/reuniao.html?clienteId=${esc(clienteAtual.id)}"
+             class="btn-reuniao" target="_blank">📋 Reunião Mensal</a>
+        </div>
       </div>
       <div class="cl-meta">
         <span>👤 ${esc(clienteAtual.responsavel)}</span>
