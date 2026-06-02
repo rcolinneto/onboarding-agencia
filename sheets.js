@@ -488,15 +488,21 @@ async function exportarParaCobo(planilhaId, reels, fotos, diasSemana) {
         cand.modelagem = 'HELP';
       }
 
-      // Mapa ideia → conteudo (para CTA)
+      // Mapa ideia → conteudo completo (para buscar CTA)
       const ideiaMapa = {};
       todos.forEach((c) => { ideiaMapa[c.ideia] = c; });
 
+      // Estrutura fixa da planilha
+      // L7: D=Segunda E=Terça F=Quarta G=Quinta H=Sexta I=Sábado J=Domingo
+      // L10=Conteúdo L11=Modelagem L12=Permeab L13=Formato L14=Conversação L15=Horário
       const DIA_COL_MAT = {
         Segunda: 'D', Terça: 'E', Terca: 'E', Quarta: 'F',
         Quinta: 'G', Sexta: 'H', Sábado: 'I', Sabado: 'I', Domingo: 'J',
       };
+      const TODAS_COLUNAS = ['D', 'E', 'F', 'G', 'H', 'I', 'J']; // todas as colunas de dias
+      const M = "'Matriz Estratégica - Insta'";
 
+      // Indexa planejamento por dia
       const matrizPlan = topN.map((c, i) => ({
         dia:            diasSemana[i],
         conteudo:       c.ideia,
@@ -505,67 +511,44 @@ async function exportarParaCobo(planilhaId, reels, fotos, diasSemana) {
         formato:        c.formato,
         horario:        c.horario || '18H',
       }));
-
       const diaMap = {};
       matrizPlan.forEach((p) => { diaMap[p.dia] = p; });
 
-      const matSheet = (await sheets.spreadsheets.values.get({
-        spreadsheetId: planilhaId,
-        range: "'Matriz Estratégica - Insta'!A1:L40",
-      })).data.values || [];
-
-      let linhaDiasMat = -1;
-      for (let i = 0; i < matSheet.length; i++) {
-        if ((matSheet[i][3] || '') === 'Segunda') { linhaDiasMat = i + 1; break; }
-      }
-      if (linhaDiasMat === -1) throw new Error('Linha dos dias não encontrada na Matriz');
-
-      const lC = linhaDiasMat + 3;
-      const lM = linhaDiasMat + 4;
-      const lP = linhaDiasMat + 5;
-      const lF = linhaDiasMat + 6;
-      const lV = linhaDiasMat + 7;
-      const lH = linhaDiasMat + 8;
-      const M  = "'Matriz Estratégica - Insta'";
-
+      // Monta updates: para cada coluna (dia), escreve ou apaga as 6 linhas de dados
       const matData = [];
-      for (const dia of DIAS_MAT) {
-        const col  = DIA_COL_MAT[dia];
+      for (const [dia, col] of Object.entries(DIA_COL_MAT)) {
+        // Evita duplicatas para aliases (Terca/Terça → mesma coluna E)
+        if (matData.some((d) => d.range.startsWith(`${M}!${col}10`))) continue;
+
         const item = diaMap[dia];
         const cta  = item ? (ideiaMapa[item.conteudo]?.conversacao || '') : '';
         matData.push(
-          { range: `${M}!${col}${lC}`, values: [[item?.conteudo       || '']] },
-          { range: `${M}!${col}${lM}`, values: [[item?.modelagem      || '']] },
-          { range: `${M}!${col}${lP}`, values: [[item?.permeabilidade || '']] },
-          { range: `${M}!${col}${lF}`, values: [[item?.formato        || '']] },
-          { range: `${M}!${col}${lV}`, values: [[cta]] },
-          { range: `${M}!${col}${lH}`, values: [[item?.horario        || '']] },
+          { range: `${M}!${col}10`, values: [[item?.conteudo       || '']] },
+          { range: `${M}!${col}11`, values: [[item?.modelagem      || '']] },
+          { range: `${M}!${col}12`, values: [[item?.permeabilidade || '']] },
+          { range: `${M}!${col}13`, values: [[item?.formato        || '']] },
+          { range: `${M}!${col}14`, values: [[cta]]                        },
+          { range: `${M}!${col}15`, values: [[item?.horario        || '']] },
         );
       }
 
-      // Equilíbrio: busca dinamicamente linhas com Hero/Hub/Help/Profundidade/Aderência na col J
-      const EQ_LABELS = ['Hero', 'Hub', 'Help', 'Profundidade', 'Aderência'];
-      const eqLinhas  = {};
-      for (let i = 0; i < matSheet.length; i++) {
-        const jVal = (matSheet[i][9] || '').trim();
-        for (const label of EQ_LABELS) {
-          if (jVal === label && !eqLinhas[label]) eqLinhas[label] = i + 1;
-        }
-      }
-      const counts = {
-        Hero:         matrizPlan.filter((p) => p.modelagem      === 'HERO').length,
-        Hub:          matrizPlan.filter((p) => p.modelagem      === 'HUB').length,
-        Help:         matrizPlan.filter((p) => p.modelagem      === 'HELP').length,
-        Profundidade: matrizPlan.filter((p) => p.permeabilidade === 'Profundidade').length,
-        Aderência:    matrizPlan.filter((p) => p.permeabilidade === 'Aderência').length,
-      };
-      for (const [label, lin] of Object.entries(eqLinhas)) {
-        matData.push({ range: `${M}!K${lin}`, values: [[counts[label] ?? '']] });
-      }
+      // Equilíbrio: linhas fixas K25=Hero, K26=Hub, K27=Help, K32=Profundidade, K33=Aderência
+      const heroCount = matrizPlan.filter((p) => p.modelagem      === 'HERO').length;
+      const hubCount  = matrizPlan.filter((p) => p.modelagem      === 'HUB').length;
+      const helpCount = matrizPlan.filter((p) => p.modelagem      === 'HELP').length;
+      const profCount = matrizPlan.filter((p) => p.permeabilidade === 'Profundidade').length;
+      const aderCount = matrizPlan.filter((p) => p.permeabilidade === 'Aderência').length;
+      matData.push(
+        { range: `${M}!K25`, values: [[heroCount]] },
+        { range: `${M}!K26`, values: [[hubCount]]  },
+        { range: `${M}!K27`, values: [[helpCount]] },
+        { range: `${M}!K32`, values: [[profCount]] },
+        { range: `${M}!K33`, values: [[aderCount]] },
+      );
 
       await sheets.spreadsheets.values.batchUpdate({
         spreadsheetId: planilhaId,
-        requestBody: { valueInputOption: 'USER_ENTERED', data: matData },
+        requestBody: { valueInputOption: 'RAW', data: matData },
       });
     } catch (_) { /* aba Matriz opcional */ }
 
