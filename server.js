@@ -15,6 +15,7 @@ const {
   salvarDocReferencias,
   buscarDocReferencias,
   lerDocGoogle,
+  lerAbaCobo,
   salvarPlanilhaCobo,
   buscarPlanilhaCobo,
   exportarParaCobo,
@@ -563,6 +564,7 @@ app.get('/api/clientes/:id/reuniao/referencias', async (req, res) => {
 // POST /api/clientes/:id/reuniao/apresentacao — gera slides JSON para a reunião
 app.post('/api/clientes/:id/reuniao/apresentacao', async (req, res) => {
   const clienteId = req.params.id;
+  const { corPrimaria = '#2563eb', corSecundaria = '#0f172a', logo = '' } = req.body || {};
   try {
     let nomeCliente = clienteId;
     try {
@@ -580,10 +582,40 @@ app.post('/api/clientes/:id/reuniao/apresentacao', async (req, res) => {
       if (docId) referencias = await lerDocGoogle(docId);
     } catch {}
 
+    // Lê planejamento real da Matriz Estratégica da planilha Cobo
+    let planejamentoTexto = '';
+    try {
+      const planilhaId = await buscarPlanilhaCobo(clienteId);
+      if (planilhaId) {
+        // D7:J15 → row 0 = dias, row 3 = conteúdo, row 4 = modelagem, row 8 = horário
+        const matrizRows = await lerAbaCobo(planilhaId, "'Matriz Estratégica - Insta'!D7:J15");
+        if (matrizRows.length >= 4) {
+          const dias      = matrizRows[0] || [];
+          const conteudos = matrizRows[3] || [];
+          const modelagens = matrizRows[4] || [];
+          const horarios  = matrizRows[8] || [];
+          const plano = dias.map((dia, i) => {
+            const c = (conteudos[i] || '').trim();
+            if (!c) return null;
+            const m = (modelagens[i] || '').trim();
+            const h = (horarios[i] || '').trim();
+            return `- ${dia}: "${c}"${m ? ` [${m}]` : ''}${h ? ` às ${h}` : ''}`;
+          }).filter(Boolean);
+          if (plano.length > 0) planejamentoTexto = plano.join('\n');
+        }
+      }
+    } catch {}
+
+    const planejamentoSection = planejamentoTexto
+      ? `PLANEJAMENTO DE CONTEÚDO REAL DO CLIENTE:\nO cliente posta de Segunda a Sábado com os seguintes conteúdos:\n${planejamentoTexto}\n\nUse esses dados reais no lugar de estimativas.`
+      : '';
+
     const prompt = `Você é especialista em marketing digital. Gere uma apresentação de alinhamento mensal para "${nomeCliente}".
 
 DIAGNÓSTICO:
 ${diagnostico || 'Não disponível'}
+
+${planejamentoSection}
 
 BANCO DE REFERÊNCIAS:
 ${referencias || 'Não disponível'}
@@ -601,7 +633,7 @@ Retorne APENAS um JSON válido, sem markdown:
   ]
 }
 
-Gere 7 slides baseados no diagnóstico e nas referências do cliente.`;
+Gere 7 slides baseados nos dados reais do cliente.`;
 
     const result = await anthropic.messages.create({
       model: 'claude-sonnet-4-6',
@@ -612,7 +644,7 @@ Gere 7 slides baseados no diagnóstico e nas referências do cliente.`;
     const raw = result.content[0].text.trim()
       .replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/, '').trim();
     const data = JSON.parse(raw);
-    res.json({ ...data, nomeCliente });
+    res.json({ ...data, nomeCliente, corPrimaria, corSecundaria, logo });
   } catch (err) {
     res.status(500).json({ error: `Erro ao gerar apresentação: ${err.message}` });
   }

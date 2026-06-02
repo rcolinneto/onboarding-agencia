@@ -119,25 +119,24 @@
     }
 
     /* ─────────────────────────────────── */
-    /*  CONTEÚDO                           */
+    /*  CONTEÚDO — fundo branco           */
     /* ─────────────────────────────────── */
     .slide-conteudo {
-      background: var(--s);
+      background: #ffffff;
     }
-    /* Subtle dot grid pattern */
     .slide-conteudo::before {
       content: '';
       position: absolute;
       inset: 0;
-      background-image: radial-gradient(circle, rgba(255,255,255,.04) 1px, transparent 1px);
+      background-image: radial-gradient(circle, rgba(0,0,0,.025) 1px, transparent 1px);
       background-size: 28px 28px;
       pointer-events: none;
     }
     .conteudo-accent {
       position: absolute;
       left: 0; top: 0; bottom: 0;
-      width: 5px;
-      background: linear-gradient(to bottom, var(--p), transparent);
+      width: 6px;
+      background: var(--p);
     }
     .conteudo-inner {
       position: relative;
@@ -145,7 +144,7 @@
       display: flex;
       flex-direction: column;
       height: 100%;
-      padding: 3.5rem 4.5rem 3.5rem 5rem;
+      padding: 3rem 4.5rem 4rem 5rem;
     }
     .conteudo-label {
       font-size: .65rem;
@@ -153,48 +152,47 @@
       letter-spacing: .18em;
       text-transform: uppercase;
       color: var(--p);
-      margin-bottom: .75rem;
-      opacity: .9;
+      margin-bottom: .6rem;
+      opacity: .8;
     }
     .conteudo-titulo {
-      font-size: clamp(1.7rem, 3.2vw, 2.75rem);
+      font-size: clamp(2rem, 3.5vw, 3rem);
       font-weight: 800;
-      color: #fff;
+      color: var(--p);
       line-height: 1.15;
-      letter-spacing: -.025em;
-      margin-bottom: 2.25rem;
-      padding-bottom: 1.5rem;
-      border-bottom: 1px solid rgba(255,255,255,.08);
+      letter-spacing: -.03em;
+      margin-bottom: 2rem;
+      padding-bottom: 1.25rem;
+      border-bottom: 3px solid var(--p);
     }
     .conteudo-lista {
       flex: 1;
       display: flex;
       flex-direction: column;
       justify-content: center;
-      gap: .25rem;
+      gap: .2rem;
     }
     .conteudo-item {
       display: flex;
       align-items: flex-start;
       gap: 1rem;
-      padding: .8rem 0;
-      border-bottom: 1px solid rgba(255,255,255,.04);
-      color: rgba(255,255,255,.85);
-      font-size: clamp(.9rem, 1.7vw, 1.2rem);
+      padding: .75rem 0;
+      border-bottom: 1px solid rgba(0,0,0,.06);
+      color: #334155;
+      font-size: clamp(1rem, 1.8vw, 1.25rem);
       line-height: 1.55;
-      animation: itemIn .4s ease both;
+      animation: itemIn .35s ease both;
     }
     .conteudo-item:last-child { border-bottom: none; }
     .conteudo-dot {
-      width: 8px; height: 8px;
+      width: 9px; height: 9px;
       background: var(--p);
       border-radius: 50%;
       flex-shrink: 0;
-      margin-top: .48em;
-      box-shadow: 0 0 8px var(--p);
+      margin-top: .42em;
     }
     @keyframes itemIn {
-      from { opacity: 0; transform: translateX(16px); }
+      from { opacity: 0; transform: translateX(14px); }
       to   { opacity: 1; transform: translateX(0); }
     }
 
@@ -202,17 +200,10 @@
     /*  DESTAQUE                           */
     /* ─────────────────────────────────── */
     .slide-destaque {
-      background: var(--s);
+      background: #f8fafc;
       justify-content: center;
       align-items: center;
       text-align: center;
-    }
-    .slide-destaque::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: radial-gradient(ellipse 70% 60% at 50% 50%, rgba(255,255,255,.03) 0%, transparent 70%);
-      pointer-events: none;
     }
     .destaque-inner {
       position: relative;
@@ -229,24 +220,39 @@
       background: var(--p);
       display: flex; align-items: center; justify-content: center;
       font-size: 1.5rem;
-      box-shadow: 0 0 32px color-mix(in srgb, var(--p) 50%, transparent);
+      color: #fff;
     }
     .destaque-texto {
       font-size: clamp(1.6rem, 3.2vw, 2.8rem);
       font-weight: 700;
       line-height: 1.35;
-      color: #fff;
+      color: var(--p);
       letter-spacing: -.02em;
     }
-    .destaque-texto em {
-      color: var(--p);
-      font-style: normal;
-    }
     .destaque-linha {
-      width: 44px; height: 3px;
+      width: 44px; height: 4px;
       background: var(--p);
       border-radius: 2px;
     }
+
+    /* ─────────────────────────────────── */
+    /*  RODAPÉ (nome + número)             */
+    /* ─────────────────────────────────── */
+    .slide-footer {
+      position: absolute;
+      bottom: 1.25rem; left: 2rem; right: 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: .68rem;
+      font-weight: 500;
+      z-index: 10;
+      pointer-events: none;
+    }
+    .slide-capa .slide-footer,
+    .slide-encerramento .slide-footer { color: rgba(255,255,255,.5); }
+    .slide-conteudo .slide-footer,
+    .slide-destaque .slide-footer    { color: #94a3b8; }
 
     /* ─────────────────────────────────── */
     /*  ENCERRAMENTO                       */
@@ -320,16 +326,21 @@
       filter: drop-shadow(0 1px 3px rgba(0,0,0,.3));
     }
 
-    /* ── Slide transitions ────────────── */
-    .slide-enter { animation: enterFwd .35s cubic-bezier(.25,.46,.45,.94) both; }
-    .slide-enter-back { animation: enterBck .35s cubic-bezier(.25,.46,.45,.94) both; }
-    @keyframes enterFwd {
-      from { opacity: 0; transform: translateX(40px); }
-      to   { opacity: 1; transform: translateX(0); }
+    /* ── Slide transitions — fade suave ── */
+    .slide-enter, .slide-enter-back {
+      animation: fadeSlide .3s ease both;
     }
-    @keyframes enterBck {
-      from { opacity: 0; transform: translateX(-40px); }
-      to   { opacity: 1; transform: translateX(0); }
+    @keyframes fadeSlide {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+
+    /* ── Print ────────────────────────── */
+    @media print {
+      .nav, .top-controls, #progress-bar { display: none !important; }
+      html, body { overflow: visible; height: auto; }
+      #stage { height: auto; }
+      .slide { page-break-after: always; height: 100vh; min-height: 100vh; }
     }
 
     /* ── Navigation ───────────────────── */
@@ -436,15 +447,17 @@
 <div id="stage"></div>
 <nav id="nav" class="nav" style="display:none"></nav>
 <div class="top-controls">
+  <button class="ctrl" onclick="window.print()">🖨 Imprimir</button>
   <button class="ctrl" onclick="toggleFS()">⛶ Tela cheia</button>
   <button class="ctrl" onclick="window.close()">✕ Fechar</button>
 </div>
 
 <script>
-  let slides   = [];
-  let idx      = 0;
-  let backward = false;
-  let logo     = '';
+  let slides      = [];
+  let idx         = 0;
+  let backward    = false;
+  let logo        = '';
+  let nomeCliente = '';
 
   /* ── Init ───────────────────────────── */
   function init() {
@@ -457,12 +470,13 @@
     }
 
     const data = JSON.parse(raw);
-    slides = data.slides || [];
-    logo   = data.logo   || '';
+    slides      = data.slides || [];
+    logo        = data.logo   || '';
+    nomeCliente = data.nomeCliente || '';
 
     document.documentElement.style.setProperty('--p', data.corPrimaria   || '#2563eb');
     document.documentElement.style.setProperty('--s', data.corSecundaria || '#0f172a');
-    if (data.nomeCliente) document.title = `${data.nomeCliente} — Apresentação`;
+    if (nomeCliente) document.title = `${nomeCliente} — Apresentação`;
 
     render();
     document.getElementById('nav').style.display = 'flex';
@@ -474,10 +488,15 @@
     const total = slides.length;
     if (!s) return;
 
-    const anim  = backward ? 'slide-enter-back' : 'slide-enter';
-    const logoH = logo
+    const anim   = 'slide-enter'; // fade — mesmo para frente e trás
+    const logoH  = logo
       ? `<img class="slide-logo" src="${x(logo)}" alt="Logo" onerror="this.remove()">`
       : '';
+    const footerH = `
+      <div class="slide-footer">
+        <span>${x(nomeCliente)}</span>
+        <span>${idx + 1} / ${total}</span>
+      </div>`;
 
     let html = '';
 
@@ -497,6 +516,7 @@
             <div class="capa-divider"></div>
             ${s.subtitulo ? `<p class="capa-subtitulo">${x(s.subtitulo)}</p>` : ''}
           </div>
+          ${footerH}
         </div>`;
 
     } else if (tipo === 'destaque') {
@@ -508,6 +528,7 @@
             <p class="destaque-texto">${x(s.texto || '')}</p>
             <div class="destaque-linha"></div>
           </div>
+          ${footerH}
         </div>`;
 
     } else if (tipo === 'encerramento') {
@@ -519,6 +540,7 @@
             <h2 class="enc-titulo">${x(s.titulo || '')}</h2>
             ${s.subtitulo ? `<p class="enc-subtitulo">${x(s.subtitulo)}</p>` : ''}
           </div>
+          ${footerH}
         </div>`;
 
     } else {
@@ -531,7 +553,7 @@
         </div>`).join('');
 
       const extra = s.destaque
-        ? `<div style="margin-bottom:.75rem;font-style:italic;opacity:.7;font-size:.9em">${x(s.destaque)}</div>`
+        ? `<div style="margin-bottom:.75rem;font-style:italic;color:var(--muted,#64748b);font-size:.9em">${x(s.destaque)}</div>`
         : '';
 
       html = `
@@ -544,6 +566,7 @@
             ${extra}
             <div class="conteudo-lista">${itens}</div>
           </div>
+          ${footerH}
         </div>`;
     }
 

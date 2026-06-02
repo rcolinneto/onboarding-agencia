@@ -289,6 +289,21 @@
       Utiliza o diagnóstico salvo e as referências carregadas para gerar o material.
     </p>
 
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:.75rem">
+      <div>
+        <label for="cor-primaria">Cor principal da marca</label>
+        <input type="color" id="cor-primaria" value="#2563eb"
+               style="width:100%;height:38px;padding:3px 4px;border:1px solid var(--border);border-radius:6px;cursor:pointer" />
+      </div>
+      <div>
+        <label for="cor-secundaria">Cor de fundo</label>
+        <input type="color" id="cor-secundaria" value="#0f172a"
+               style="width:100%;height:38px;padding:3px 4px;border:1px solid var(--border);border-radius:6px;cursor:pointer" />
+      </div>
+    </div>
+    <label for="logo-url">URL da logo do cliente (opcional)</label>
+    <input id="logo-url" type="text" placeholder="https://... ou deixe vazio" style="margin-bottom:.75rem" />
+
     <div class="btn-row">
       <button class="btn btn-primary" id="btn-apres" onclick="gerarApresentacao()">
         🖥 Gerar apresentação de alinhamento
@@ -401,6 +416,10 @@
 
   // ── Gerar apresentação ────────────────────
   async function gerarApresentacao() {
+    const corPrimaria   = document.getElementById('cor-primaria').value;
+    const corSecundaria = document.getElementById('cor-secundaria').value;
+    const logo          = document.getElementById('logo-url').value.trim();
+
     // Abre janela antes do await para evitar bloqueio de popup
     const win = window.open('about:blank', '_blank');
 
@@ -409,13 +428,15 @@
     show('apres-loading');
 
     try {
-      const data = await apiFetch('POST', `/api/clientes/${clienteId}/reuniao/apresentacao`, {});
+      const data = await apiFetch('POST', `/api/clientes/${clienteId}/reuniao/apresentacao`, {
+        corPrimaria, corSecundaria, logo,
+      });
       localStorage.setItem('apresentacao_data', JSON.stringify({
         slides:        data.slides,
         nomeCliente:   data.nomeCliente,
-        corPrimaria:   '#4f46e5',
-        corSecundaria: '#0f172a',
-        logo:          '',
+        corPrimaria:   data.corPrimaria   || corPrimaria,
+        corSecundaria: data.corSecundaria || corSecundaria,
+        logo:          data.logo          || logo,
       }));
       if (win && !win.closed) {
         win.location.href = '/apresentacao.html';

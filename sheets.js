@@ -369,6 +369,17 @@ async function buscarDocReferencias(clienteId) {
   }
 }
 
+// Lê um range de qualquer planilha (para leitura da Cobo)
+async function lerAbaCobo(planilhaId, range) {
+  try {
+    const sheets = await getSheets();
+    const res = await sheets.spreadsheets.values.get({ spreadsheetId: planilhaId, range });
+    return res.data.values || [];
+  } catch {
+    return [];
+  }
+}
+
 // Lê um Google Doc e retorna o texto extraído
 async function lerDocGoogle(docId) {
   try {
@@ -652,6 +663,7 @@ module.exports = {
   salvarDocReferencias,
   buscarDocReferencias,
   lerDocGoogle,
+  lerAbaCobo,
   salvarPlanilhaCobo,
   buscarPlanilhaCobo,
   exportarParaCobo,
