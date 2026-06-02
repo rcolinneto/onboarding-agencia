@@ -401,74 +401,88 @@ async function exportarParaCobo(planilhaId, conteudos, planejamento) {
       });
     } catch (_) { /* aba RDC opcional */ }
 
-    // ── 3. Aba "Planejamento" — detecção dinâmica de linhas ──────────────────
+    // ── 3. Aba "Planejamento" — 4 blocos semanais com detecção dinâmica ─────────
     const planSheet = (await sheets.spreadsheets.values.get({
       spreadsheetId: planilhaId,
-      range: 'Planejamento!A1:H60',
+      range: 'Planejamento!A1:H120',
     })).data.values || [];
 
-    // Encontra PRIMEIRA linha onde coluna B (index 1) === 'SEGUNDA'
-    let linhaDias = -1;
-    for (let i = 0; i < planSheet.length; i++) {
-      if ((planSheet[i][1] || '').toUpperCase() === 'SEGUNDA') {
-        linhaDias = i + 1; // 1-based
-        break;
-      }
-    }
-
-    if (linhaDias === -1) throw new Error('Linha dos dias não encontrada na aba Planejamento');
-
-    // Detecta linhas dos horários nas próximas 30 linhas após linhaDias
-    // Verifica se coluna A começa com "10", "12", "14", "18", "20" ou "22"
-    const HORAS = ['10', '12', '14', '18', '20', '22'];
-    const horLinha = {};
-    for (let i = linhaDias; i < Math.min(planSheet.length, linhaDias + 30); i++) {
-      const cel = (planSheet[i][0] || '').trim();
-      for (const h of HORAS) {
-        if ((cel.startsWith(`${h}:`) || cel.startsWith(`${h}.`) || cel === h) && !horLinha[h]) {
-          horLinha[h] = i + 1; // 1-based
-        }
-      }
-    }
-
-    // Resolve a linha de um horário: busca exata → mais próxima → padrão 18
-    function resolverLinha(horario) {
-      const num = horNumero(horario || '18H');
-      if (horLinha[num]) return horLinha[num];
-      // Busca o horário registrado mais próximo numericamente
-      const disponiveis = Object.entries(horLinha)
-        .map(([h, l]) => ({ diff: Math.abs(Number(h) - Number(num)), lin: l }))
-        .sort((a, b) => a.diff - b.diff);
-      return disponiveis[0]?.lin || horLinha['18'] || Object.values(horLinha)[0];
-    }
-
+    const HORAS        = ['10', '12', '14', '18', '20', '22'];
     const DIA_COL_PLAN = {
       Segunda: 'B', Terça: 'C', Terca: 'C', Quarta: 'D',
       Quinta: 'E', Sexta: 'F', Sábado: 'G', Sabado: 'G', Domingo: 'H',
     };
 
-    // Limpa a área da grade: da linha linhaDias+2 até linhaDias+25
-    const clearStart = linhaDias + 2;
-    const clearEnd   = linhaDias + 25;
-    await sheets.spreadsheets.values.clear({
+    // Encontra TODOS os blocos: cada linha onde col B === 'SEGUNDA'
+    const blocos = [];
+    for (let i = 0; i < planSheet.length; i++) {
+      if ((planSheet[i][1] || '').toUpperCase() === 'SEGUNDA') {
+        const linhaDias = i + 1; // 1-based
+
+        // Detecta horários nas próximas 30 linhas: coluna A começa com "10", "12", ...
+        const horMap = {};
+        for (let j = i + 1; j < Math.min(planSheet.length, i + 31); j++) {
+          const cel = (planSheet[j][0] || '').trim();
+          for (const h of HORAS) {
+            if ((cel.startsWith(`${h}:`) || cel === h) && !horMap[h]) {
+              horMap[h] = j + 1; // 1-based
+            }
+          }
+        }
+        blocos.push({ linhaDias, horMap });
+      }
+    }
+
+    if (blocos.length === 0) throw new Error('Nenhum bloco semanal encontrado na aba Planejamento');
+
+    // Resolve a linha do horário: exata → mais próxima numericamente
+    function resolverLinhaBloco(horMap, horario) {
+      const num = horNumero(horario || '18H');
+      if (horMap[num]) return horMap[num];
+      const sorted = Object.entries(horMap)
+        .map(([h, l]) => ({ diff: Math.abs(Number(h) - Number(num)), lin: l }))
+        .sort((a, b) => a.diff - b.diff);
+      return sorted[0]?.lin || null;
+    }
+
+    // Limpa todos os blocos com batchClear
+    await sheets.spreadsheets.values.batchClear({
       spreadsheetId: planilhaId,
-      range: `Planejamento!B${clearStart}:H${clearEnd}`,
+      requestBody: {
+        ranges: blocos.map(({ linhaDias }) =>
+          `Planejamento!B${linhaDias + 2}:H${linhaDias + 25}`
+        ),
+      },
     });
 
-    // Garante que todos os dias do planejamento sejam escritos
-    // Se o horário não for encontrado, usa o mais próximo disponível
-    const planData = (planejamento || []).map((p) => {
-      const col = DIA_COL_PLAN[p.dia];
-      if (!col) return null;
-      const lin = resolverLinha(p.horario);
-      if (!lin) return null;
-      return { range: `Planejamento!${col}${lin}`, values: [[p.conteudo || '']] };
-    }).filter(Boolean);
+    // Monta dados para todos os blocos (mesmo planejamento repetido em cada bloco)
+    const planData = [];
+    for (const { horMap } of blocos) {
+      for (const p of (planejamento || [])) {
+        const col = DIA_COL_PLAN[p.dia];
+        const lin = resolverLinhaBloco(horMap, p.horario);
+        if (!col || !lin) continue;
+        planData.push({ range: `Planejamento!${col}${lin}`, values: [[p.conteudo || '']] });
+      }
+    }
 
     if (planData.length) {
       await sheets.spreadsheets.values.batchUpdate({
         spreadsheetId: planilhaId,
         requestBody: { valueInputOption: 'USER_ENTERED', data: planData },
+      });
+    }
+
+    // Atualiza linha 1 (LEGENDAS) com redes ativas
+    const hasInsta  = (conteudos || []).some((c) => (c.rede || '').includes('Instagram'));
+    const hasTikTok = (conteudos || []).some((c) => (c.rede || '').includes('TikTok'));
+    const legendas  = [];
+    if (hasInsta)  legendas.push({ range: 'Planejamento!C1', values: [['INSTA ✓']]  });
+    if (hasTikTok) legendas.push({ range: 'Planejamento!H1', values: [['TIKTOK ✓']] });
+    if (legendas.length) {
+      await sheets.spreadsheets.values.batchUpdate({
+        spreadsheetId: planilhaId,
+        requestBody: { valueInputOption: 'USER_ENTERED', data: legendas },
       });
     }
 
