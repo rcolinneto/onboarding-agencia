@@ -354,130 +354,83 @@ async function buscarPlanilhaCobo(clienteId) {
 async function exportarParaCobo(planilhaId, conteudos, planejamento) {
   try {
     const sheets = await getSheets();
+    const pad = (arr, n = 15) => { const r = [...arr]; while (r.length < n) r.push(['']); return r; };
 
-    // ── Mapa auxiliar: ideia → conteudo completo (para buscar CTA) ──────────
-    const ideiaMapa = {};
-    (conteudos || []).forEach((c) => { ideiaMapa[c.ideia] = c; });
+    // ── 1. Aba "COBO" — ideias por rede ──────────────────────────────────────
+    const inst = (conteudos || []).filter((c) => (c.rede || '').includes('Instagram')).map((c) => [c.ideia || '']);
+    const tik  = (conteudos || []).filter((c) => (c.rede || '').includes('TikTok')).map((c) => [c.ideia || '']);
+    const was  = (conteudos || []).filter((c) => (c.rede || '').includes('WhatsApp')).map((c) => [c.ideia || '']);
 
-    // ── 1. Aba "COBO" — ideias por rede em colunas separadas ─────────────────
-    const instIdeias  = (conteudos || []).filter((c) => (c.rede || '').includes('Instagram')).map((c) => [c.ideia || '']);
-    const tikIdeias   = (conteudos || []).filter((c) => (c.rede || '').includes('TikTok')).map((c) => [c.ideia || '']);
-    const wasIdeias   = (conteudos || []).filter((c) => (c.rede || '').includes('WhatsApp')).map((c) => [c.ideia || '']);
+    try {
+      await sheets.spreadsheets.values.batchUpdate({
+        spreadsheetId: planilhaId,
+        requestBody: {
+          valueInputOption: 'USER_ENTERED',
+          data: [
+            { range: "'COBO'!B6:B20", values: pad(inst) },
+            { range: "'COBO'!G6:G20", values: pad(tik)  },
+            { range: "'COBO'!K6:K20", values: pad(was)  },
+          ],
+        },
+      });
+    } catch (e) { /* aba COBO opcional */ }
 
-    // Preenche até 20 linhas (esvazia células antigas com string vazia)
-    const pad = (arr, n = 20) => { const r = [...arr]; while (r.length < n) r.push(['']); return r; };
-
-    await sheets.spreadsheets.values.batchUpdate({
-      spreadsheetId: planilhaId,
-      requestBody: {
-        valueInputOption: 'USER_ENTERED',
-        data: [
-          { range: "'COBO'!B6:B25", values: pad(instIdeias) },
-          { range: "'COBO'!G6:G25", values: pad(tikIdeias)  },
-          { range: "'COBO'!K6:K25", values: pad(wasIdeias)  },
-        ],
-      },
-    });
-
-    // ── 2. Aba "RDC - Reels" — todos os campos, ordenados por ordem ──────────
+    // ── 2. Aba "RDC - Reels" — blocos de 7 linhas ────────────────────────────
+    // Cada conteúdo ocupa a 1ª linha de um bloco: 6, 13, 20, 27, 34, 41, 48...
+    const RDC_BLOCOS = [6, 13, 20, 27, 34, 41, 48];
     const sorted = [...(conteudos || [])].sort((a, b) => (a.ordem || 99) - (b.ordem || 99));
-    const rdcRows = sorted.map((c) => [
-      c.ideia        || '',
-      c.demanda      ?? '',
-      c.competicao   ?? '',
-      c.nota         ?? '',
-      c.ordem        ?? '',
-      c.modelagem    || '',
-      c.permeabilidade || '',
-      c.formato      || '',
-      c.conversacao  || '',
-      c.horario      || '',
-      c.rede         || '',
-    ]);
 
-    await sheets.spreadsheets.values.clear({
-      spreadsheetId: planilhaId,
-      range: "'RDC - Reels'!A2:K20",
-    });
-    if (rdcRows.length) {
-      await sheets.spreadsheets.values.update({
-        spreadsheetId: planilhaId,
-        range: "'RDC - Reels'!A2",
-        valueInputOption: 'USER_ENTERED',
-        requestBody: { values: rdcRows },
-      });
-    }
+    const rdcData = RDC_BLOCOS.map((lin, i) => {
+      const c = sorted[i]; // undefined para slots além do total de conteúdos
+      return [
+        { range: `'RDC - Reels'!B${lin}`, values: [[c?.ideia      || '']] },
+        { range: `'RDC - Reels'!F${lin}`, values: [[c?.demanda    ?? '']] },
+        { range: `'RDC - Reels'!H${lin}`, values: [[c?.competicao ?? '']] },
+        { range: `'RDC - Reels'!L${lin}`, values: [[c?.ordem      ?? '']] },
+        // Coluna D = Resolução/Modelagem (extra info)
+        { range: `'RDC - Reels'!D${lin}`, values: [[c?.modelagem  || '']] },
+      ];
+    }).flat();
 
-    // ── 3. Aba "Matriz Estratégica - Insta" — dias e equilíbrio ──────────────
-    // Mapeamento dia → coluna (D=Segunda … J=Domingo)
-    const DIA_COL = {
-      Segunda: 'D', Terça: 'E', Quarta: 'F',
-      Quinta:  'G', Sexta: 'H', Sábado: 'I', Domingo: 'J',
-    };
-    const TODOS_DIAS = Object.keys(DIA_COL);
-
-    // Indexa planejamento por dia
-    const diaMap = {};
-    (planejamento || []).forEach((p) => { diaMap[p.dia] = p; });
-
-    // Monta 6 linhas (linhas 10-15) × 7 colunas (D-J) de uma vez
-    // Cada linha: um atributo; cada coluna: um dia
-    const ATRIBS = ['conteudo', 'modelagem', 'permeabilidade', 'formato', 'cta', 'horario'];
-    const matrizValues = ATRIBS.map((attr) =>
-      TODOS_DIAS.map((dia) => {
-        const item = diaMap[dia];
-        if (!item) return '';
-        if (attr === 'cta') return ideiaMapa[item.conteudo]?.conversacao || '';
-        return item[attr] || '';
-      })
-    );
-
-    // Contagens de equilíbrio (baseadas no planejamento atual)
-    const plan = planejamento || [];
-    const heroN = plan.filter((p) => p.modelagem === 'HERO').length;
-    const hubN  = plan.filter((p) => p.modelagem === 'HUB').length;
-    const helpN = plan.filter((p) => p.modelagem === 'HELP').length;
-    const profN = plan.filter((p) => p.permeabilidade === 'Profundidade').length;
-    const aderN = plan.filter((p) => p.permeabilidade === 'Aderência').length;
-
-    const M = "'Matriz Estratégica - Insta'";
     await sheets.spreadsheets.values.batchUpdate({
       spreadsheetId: planilhaId,
-      requestBody: {
-        valueInputOption: 'USER_ENTERED',
-        data: [
-          { range: `${M}!D10:J15`, values: matrizValues },
-          { range: `${M}!K25`,     values: [[heroN]] },
-          { range: `${M}!K26`,     values: [[hubN]]  },
-          { range: `${M}!K27`,     values: [[helpN]] },
-          { range: `${M}!K32`,     values: [[profN]] },
-          { range: `${M}!K33`,     values: [[aderN]] },
-        ],
-      },
+      requestBody: { valueInputOption: 'USER_ENTERED', data: rdcData },
     });
 
-    // ── 4. Aba "Planejamento" — sem linhas vazias, dia sempre preenchido ──────
-    const planRows = (planejamento || []).map((p) => [
-      p.dia            || '',
-      p.conteudo       || '',
-      p.modelagem      || '',
-      p.permeabilidade || '',
-      p.formato        || '',
-      p.horario        || '',
-    ]);
+    // ── 3. Aba "Planejamento" — grade dia × horário ───────────────────────────
+    // Colunas dos dias: B=Segunda, C=Terça, D=Quarta, E=Quinta, F=Sexta, G=Sábado, H=Domingo
+    // Linhas dos horários: 7=10H, 13=12H, 16=14H, 22=18H, 25=20H, 28=22H
+    const DIA_COL = {
+      Segunda: 'B', Terça: 'C', Terca: 'C', Quarta: 'D',
+      Quinta: 'E', Sexta: 'F', Sábado: 'G', Sabado: 'G', Domingo: 'H',
+    };
+    const HORARIO_LIN = {
+      '10H': 7, '10h': 7, '12H': 13, '12h': 13,
+      '14H': 16, '14h': 16, '18H': 22, '18h': 22,
+      '20H': 25, '20h': 25, '22H': 28, '22h': 28,
+    };
 
-    await sheets.spreadsheets.values.clear({
-      spreadsheetId: planilhaId,
-      range: 'Planejamento!A2:F20',
+    // Indexa planejamento por chave dia|horario para detectar o que preencher
+    const planIdx = {};
+    (planejamento || []).forEach((p) => {
+      planIdx[`${p.dia}|${p.horario}`] = p.conteudo || '';
     });
-    if (planRows.length) {
-      await sheets.spreadsheets.values.update({
-        spreadsheetId: planilhaId,
-        range: 'Planejamento!A2',
-        valueInputOption: 'USER_ENTERED',
-        requestBody: { values: planRows },
+
+    // Gera todas as células da grade (7 dias × 6 horários) com o valor final
+    const planData = [];
+    Object.entries(DIA_COL).forEach(([dia, col]) => {
+      Object.entries(HORARIO_LIN).forEach(([hor, lin]) => {
+        planData.push({
+          range: `Planejamento!${col}${lin}`,
+          values: [[planIdx[`${dia}|${hor}`] || '']],
+        });
       });
-    }
+    });
+
+    await sheets.spreadsheets.values.batchUpdate({
+      spreadsheetId: planilhaId,
+      requestBody: { valueInputOption: 'USER_ENTERED', data: planData },
+    });
 
     return { ok: true };
   } catch (err) {
