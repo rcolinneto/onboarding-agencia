@@ -396,36 +396,48 @@ app.post('/api/clientes/:id/conteudo/planejamento', async (req, res) => {
   }
 
   try {
-    const prompt = `Você é estrategista de conteúdo digital. Monte um planejamento semanal equilibrado.
+    // Busca diagnóstico salvo para personalizar o planejamento
+    let diagnostico = '';
+    try { diagnostico = await buscarDiagnostico(req.params.id); } catch {}
 
-Regras:
-- Use mais HELP que HERO
-- Equilibre Profundidade e Aderência
-- Um conteúdo por dia nos dias fornecidos
-- Priorize conteúdos com maior nota
+    const prompt = `Você é um estrategista de conteúdo sênior especializado em tráfego orgânico no Brasil.
 
-Conteúdos disponíveis (ordenados por nota):
-${JSON.stringify(conteudos.sort((a, b) => b.nota - a.nota), null, 2)}
+Monte um planejamento semanal de conteúdo personalizado para este cliente baseado no diagnóstico abaixo.
 
-Dias: ${diasSemana.join(', ')}
+DIAGNÓSTICO DO CLIENTE:
+${diagnostico || 'Não disponível'}
 
-Retorne APENAS um JSON válido, sem markdown:
-{
-  "semana": [
-    { "dia": "Segunda", "conteudo": "...", "modelagem": "HELP", "permeabilidade": "Profundidade", "formato": "Reels 60s", "horario": "18H" }
-  ]
-}`;
+CONTEÚDOS AVALIADOS (use apenas estes):
+${JSON.stringify(conteudos)}
+
+DIAS DA SEMANA: ${diasSemana.join(', ')}
+
+REGRAS OBRIGATÓRIAS:
+- Use APENAS os conteúdos da lista acima, não invente novos
+- Distribua respeitando: mais HELP que HUB, mais HUB que HERO
+- Nunca coloque dois HERO seguidos
+- Adapte a ordem e os horários com base no perfil do cliente no diagnóstico
+- Se o cliente tem baixo engajamento: priorize HELP e HUB antes de HERO
+- Se o cliente tem produto de alto ticket: use mais Profundidade
+- Se o cliente é iniciante nas redes: comece com conteúdos de Aderência
+- Os horários devem fazer sentido para o público-alvo identificado no diagnóstico
+- Retorne EXATAMENTE um conteúdo por dia para cada dia solicitado
+
+Retorne APENAS um JSON array com esta estrutura, sem markdown:
+[{ "dia": "Segunda", "conteudo": "...", "modelagem": "HELP", "permeabilidade": "Profundidade", "formato": "Reels 60s", "horario": "18H", "justificativa": "..." }]
+
+O campo justificativa deve explicar em 1 linha por que este conteúdo foi escolhido para este dia.`;
 
     const result = await anthropic.messages.create({
       model: 'claude-sonnet-4-6',
-      max_tokens: 2000,
+      max_tokens: 3000,
       messages: [{ role: 'user', content: prompt }],
     });
 
     const raw = result.content[0].text.trim()
       .replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/, '').trim();
-    const data = JSON.parse(raw);
-    res.json(data);
+    const semana = JSON.parse(raw);
+    res.json({ semana });
   } catch (err) {
     res.status(500).json({ error: `Erro ao montar planejamento: ${err.message}` });
   }
