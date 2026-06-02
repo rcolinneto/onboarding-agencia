@@ -455,22 +455,82 @@ async function exportarParaCobo(planilhaId, conteudos, planejamento) {
       },
     });
 
-    // Monta dados para todos os blocos (mesmo planejamento repetido em cada bloco)
-    const planData = [];
+    // Busca o sheetId da aba Planejamento para formatação de cores
+    let planSheetId = null;
+    try {
+      const meta = await sheets.spreadsheets.get({
+        spreadsheetId: planilhaId,
+        fields: 'sheets.properties',
+      });
+      const tab = meta.data.sheets.find((s) => s.properties.title === 'Planejamento');
+      planSheetId = tab?.properties?.sheetId ?? null;
+    } catch (_) {}
+
+    // Cores por modelagem (RGB 0–1)
+    const CORES = {
+      HERO: { red: 1.0,    green: 0.8784, blue: 0.8784 }, // #FFE0E0
+      HUB:  { red: 0.8784, green: 0.9333, blue: 1.0    }, // #E0EEFF
+      HELP: { red: 0.8784, green: 1.0,    blue: 0.9098 }, // #E0FFE8
+    };
+
+    // Monta dados e células para todos os blocos (mesmo planejamento em cada bloco)
+    const planData      = [];
+    const cellsParaColorir = []; // { rowIndex, colIndex, modelagem }
+
     for (const { horMap } of blocos) {
       for (const p of (planejamento || [])) {
         const col = DIA_COL_PLAN[p.dia];
         const lin = resolverLinhaBloco(horMap, p.horario);
         if (!col || !lin) continue;
+
         planData.push({ range: `Planejamento!${col}${lin}`, values: [[p.conteudo || '']] });
+
+        cellsParaColorir.push({
+          rowIndex:   lin - 1,                         // 0-based
+          colIndex:   col.charCodeAt(0) - 65,          // A=0, B=1...
+          modelagem:  (p.modelagem || '').toUpperCase(),
+        });
       }
     }
 
+    // Escreve os conteúdos
     if (planData.length) {
       await sheets.spreadsheets.values.batchUpdate({
         spreadsheetId: planilhaId,
         requestBody: { valueInputOption: 'USER_ENTERED', data: planData },
       });
+    }
+
+    // Aplica cores de fundo por modelagem
+    if (planSheetId !== null && cellsParaColorir.length) {
+      const colorRequests = cellsParaColorir
+        .map(({ rowIndex, colIndex, modelagem }) => {
+          const cor = CORES[modelagem];
+          if (!cor) return null;
+          return {
+            repeatCell: {
+              range: {
+                sheetId:          planSheetId,
+                startRowIndex:    rowIndex,
+                endRowIndex:      rowIndex + 1,
+                startColumnIndex: colIndex,
+                endColumnIndex:   colIndex + 1,
+              },
+              cell: {
+                userEnteredFormat: { backgroundColor: cor },
+              },
+              fields: 'userEnteredFormat.backgroundColor',
+            },
+          };
+        })
+        .filter(Boolean);
+
+      if (colorRequests.length) {
+        await sheets.spreadsheets.batchUpdate({
+          spreadsheetId: planilhaId,
+          requestBody: { requests: colorRequests },
+        });
+      }
     }
 
     // Atualiza linha 1 (LEGENDAS) com redes ativas

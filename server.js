@@ -423,6 +423,8 @@ REGRAS OBRIGATÓRIAS:
 - Os horários devem fazer sentido para o público-alvo identificado no diagnóstico
 - Retorne EXATAMENTE um conteúdo por dia para cada dia solicitado
 
+IMPORTANTE: Você DEVE retornar exatamente um conteúdo para CADA um dos seguintes dias: ${diasSemana.join(', ')}. Se não houver conteúdo suficiente para todos os dias, repita conteúdos com pequenas variações. Nunca deixe um dia sem conteúdo.
+
 Retorne APENAS um JSON array com esta estrutura, sem markdown:
 [{ "dia": "Segunda", "conteudo": "...", "modelagem": "HELP", "permeabilidade": "Profundidade", "formato": "Reels 60s", "horario": "18H", "justificativa": "..." }]
 
