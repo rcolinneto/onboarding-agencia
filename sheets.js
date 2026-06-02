@@ -350,40 +350,134 @@ async function buscarPlanilhaCobo(clienteId) {
   }
 }
 
-// Exporta conteudos e planejamento para abas da planilha Cobo
+// Exporta conteudos e planejamento para as 4 abas da planilha Cobo
 async function exportarParaCobo(planilhaId, conteudos, planejamento) {
   try {
     const sheets = await getSheets();
 
-    // Aba "RDC - Reels"
-    const rdcHeader = [['Ideia', 'Demanda', 'Competição', 'Nota', 'Ordem',
-      'Modelagem', 'Permeabilidade', 'Formato', 'Conversação', 'Horário', 'Rede']];
-    const rdcRows = conteudos.map((c) => [
-      c.ideia, c.demanda, c.competicao, c.nota, c.ordem,
-      c.modelagem, c.permeabilidade, c.formato, c.conversacao, c.horario, c.rede,
-    ]);
+    // ── Mapa auxiliar: ideia → conteudo completo (para buscar CTA) ──────────
+    const ideiaMapa = {};
+    (conteudos || []).forEach((c) => { ideiaMapa[c.ideia] = c; });
 
-    await sheets.spreadsheets.values.clear({ spreadsheetId: planilhaId, range: 'RDC - Reels' });
-    await sheets.spreadsheets.values.update({
+    // ── 1. Aba "COBO" — ideias por rede em colunas separadas ─────────────────
+    const instIdeias  = (conteudos || []).filter((c) => (c.rede || '').includes('Instagram')).map((c) => [c.ideia || '']);
+    const tikIdeias   = (conteudos || []).filter((c) => (c.rede || '').includes('TikTok')).map((c) => [c.ideia || '']);
+    const wasIdeias   = (conteudos || []).filter((c) => (c.rede || '').includes('WhatsApp')).map((c) => [c.ideia || '']);
+
+    // Preenche até 20 linhas (esvazia células antigas com string vazia)
+    const pad = (arr, n = 20) => { const r = [...arr]; while (r.length < n) r.push(['']); return r; };
+
+    await sheets.spreadsheets.values.batchUpdate({
       spreadsheetId: planilhaId,
-      range: 'RDC - Reels!A1',
-      valueInputOption: 'USER_ENTERED',
-      requestBody: { values: [...rdcHeader, ...rdcRows] },
+      requestBody: {
+        valueInputOption: 'USER_ENTERED',
+        data: [
+          { range: "'COBO'!B6:B25", values: pad(instIdeias) },
+          { range: "'COBO'!G6:G25", values: pad(tikIdeias)  },
+          { range: "'COBO'!K6:K25", values: pad(wasIdeias)  },
+        ],
+      },
     });
 
-    // Aba "Planejamento"
-    const planHeader = [['Dia', 'Conteúdo', 'Modelagem', 'Permeabilidade', 'Formato', 'Horário']];
-    const planRows = planejamento.map((p) => [
-      p.dia, p.conteudo, p.modelagem, p.permeabilidade, p.formato, p.horario,
+    // ── 2. Aba "RDC - Reels" — todos os campos, ordenados por ordem ──────────
+    const sorted = [...(conteudos || [])].sort((a, b) => (a.ordem || 99) - (b.ordem || 99));
+    const rdcRows = sorted.map((c) => [
+      c.ideia        || '',
+      c.demanda      ?? '',
+      c.competicao   ?? '',
+      c.nota         ?? '',
+      c.ordem        ?? '',
+      c.modelagem    || '',
+      c.permeabilidade || '',
+      c.formato      || '',
+      c.conversacao  || '',
+      c.horario      || '',
+      c.rede         || '',
     ]);
 
-    await sheets.spreadsheets.values.clear({ spreadsheetId: planilhaId, range: 'Planejamento' });
-    await sheets.spreadsheets.values.update({
+    await sheets.spreadsheets.values.clear({
       spreadsheetId: planilhaId,
-      range: 'Planejamento!A1',
-      valueInputOption: 'USER_ENTERED',
-      requestBody: { values: [...planHeader, ...planRows] },
+      range: "'RDC - Reels'!A2:K20",
     });
+    if (rdcRows.length) {
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: planilhaId,
+        range: "'RDC - Reels'!A2",
+        valueInputOption: 'USER_ENTERED',
+        requestBody: { values: rdcRows },
+      });
+    }
+
+    // ── 3. Aba "Matriz Estratégica - Insta" — dias e equilíbrio ──────────────
+    // Mapeamento dia → coluna (D=Segunda … J=Domingo)
+    const DIA_COL = {
+      Segunda: 'D', Terça: 'E', Quarta: 'F',
+      Quinta:  'G', Sexta: 'H', Sábado: 'I', Domingo: 'J',
+    };
+    const TODOS_DIAS = Object.keys(DIA_COL);
+
+    // Indexa planejamento por dia
+    const diaMap = {};
+    (planejamento || []).forEach((p) => { diaMap[p.dia] = p; });
+
+    // Monta 6 linhas (linhas 10-15) × 7 colunas (D-J) de uma vez
+    // Cada linha: um atributo; cada coluna: um dia
+    const ATRIBS = ['conteudo', 'modelagem', 'permeabilidade', 'formato', 'cta', 'horario'];
+    const matrizValues = ATRIBS.map((attr) =>
+      TODOS_DIAS.map((dia) => {
+        const item = diaMap[dia];
+        if (!item) return '';
+        if (attr === 'cta') return ideiaMapa[item.conteudo]?.conversacao || '';
+        return item[attr] || '';
+      })
+    );
+
+    // Contagens de equilíbrio (baseadas no planejamento atual)
+    const plan = planejamento || [];
+    const heroN = plan.filter((p) => p.modelagem === 'HERO').length;
+    const hubN  = plan.filter((p) => p.modelagem === 'HUB').length;
+    const helpN = plan.filter((p) => p.modelagem === 'HELP').length;
+    const profN = plan.filter((p) => p.permeabilidade === 'Profundidade').length;
+    const aderN = plan.filter((p) => p.permeabilidade === 'Aderência').length;
+
+    const M = "'Matriz Estratégica - Insta'";
+    await sheets.spreadsheets.values.batchUpdate({
+      spreadsheetId: planilhaId,
+      requestBody: {
+        valueInputOption: 'USER_ENTERED',
+        data: [
+          { range: `${M}!D10:J15`, values: matrizValues },
+          { range: `${M}!K25`,     values: [[heroN]] },
+          { range: `${M}!K26`,     values: [[hubN]]  },
+          { range: `${M}!K27`,     values: [[helpN]] },
+          { range: `${M}!K32`,     values: [[profN]] },
+          { range: `${M}!K33`,     values: [[aderN]] },
+        ],
+      },
+    });
+
+    // ── 4. Aba "Planejamento" — sem linhas vazias, dia sempre preenchido ──────
+    const planRows = (planejamento || []).map((p) => [
+      p.dia            || '',
+      p.conteudo       || '',
+      p.modelagem      || '',
+      p.permeabilidade || '',
+      p.formato        || '',
+      p.horario        || '',
+    ]);
+
+    await sheets.spreadsheets.values.clear({
+      spreadsheetId: planilhaId,
+      range: 'Planejamento!A2:F20',
+    });
+    if (planRows.length) {
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: planilhaId,
+        range: 'Planejamento!A2',
+        valueInputOption: 'USER_ENTERED',
+        requestBody: { values: planRows },
+      });
+    }
 
     return { ok: true };
   } catch (err) {
