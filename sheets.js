@@ -350,11 +350,16 @@ async function buscarPlanilhaCobo(clienteId) {
   }
 }
 
-// Exporta conteudos e planejamento para as 4 abas da planilha Cobo
+// Exporta conteudos e planejamento para as abas da planilha Cobo
 async function exportarParaCobo(planilhaId, conteudos, planejamento) {
   try {
     const sheets = await getSheets();
     const pad = (arr, n = 15) => { const r = [...arr]; while (r.length < n) r.push(['']); return r; };
+
+    // Converte "12H" / "12h" / "12:00" → prefixo "12" para comparar com células da planilha
+    function horNumero(h) {
+      return String(h).replace(/[Hh]$/, '').replace(/:.*/, '').trim();
+    }
 
     // ── 1. Aba "COBO" — ideias por rede ──────────────────────────────────────
     const inst = (conteudos || []).filter((c) => (c.rede || '').includes('Instagram')).map((c) => [c.ideia || '']);
@@ -373,62 +378,75 @@ async function exportarParaCobo(planilhaId, conteudos, planejamento) {
           ],
         },
       });
-    } catch (e) { /* aba COBO opcional */ }
+    } catch (_) { /* aba COBO opcional */ }
 
     // ── 2. Aba "RDC - Reels" — blocos de 7 linhas ────────────────────────────
-    // Cada conteúdo ocupa a 1ª linha de um bloco: 6, 13, 20, 27, 34, 41, 48...
     const RDC_BLOCOS = [6, 13, 20, 27, 34, 41, 48];
     const sorted = [...(conteudos || [])].sort((a, b) => (a.ordem || 99) - (b.ordem || 99));
-
     const rdcData = RDC_BLOCOS.map((lin, i) => {
-      const c = sorted[i]; // undefined para slots além do total de conteúdos
+      const c = sorted[i];
       return [
         { range: `'RDC - Reels'!B${lin}`, values: [[c?.ideia      || '']] },
+        { range: `'RDC - Reels'!D${lin}`, values: [[c?.modelagem  || '']] },
         { range: `'RDC - Reels'!F${lin}`, values: [[c?.demanda    ?? '']] },
         { range: `'RDC - Reels'!H${lin}`, values: [[c?.competicao ?? '']] },
         { range: `'RDC - Reels'!L${lin}`, values: [[c?.ordem      ?? '']] },
-        // Coluna D = Resolução/Modelagem (extra info)
-        { range: `'RDC - Reels'!D${lin}`, values: [[c?.modelagem  || '']] },
       ];
     }).flat();
 
-    await sheets.spreadsheets.values.batchUpdate({
-      spreadsheetId: planilhaId,
-      requestBody: { valueInputOption: 'USER_ENTERED', data: rdcData },
-    });
+    try {
+      await sheets.spreadsheets.values.batchUpdate({
+        spreadsheetId: planilhaId,
+        requestBody: { valueInputOption: 'USER_ENTERED', data: rdcData },
+      });
+    } catch (_) { /* aba RDC opcional */ }
 
-    // ── 3. Aba "Planejamento" — grade dia × horário ───────────────────────────
-    // Colunas dos dias: B=Segunda, C=Terça, D=Quarta, E=Quinta, F=Sexta, G=Sábado, H=Domingo
-    // Linhas dos horários: 7=10H, 13=12H, 16=14H, 22=18H, 25=20H, 28=22H
-    const DIA_COL = {
+    // ── 3. Aba "Planejamento" — detecção dinâmica de linhas ──────────────────
+    const planSheet = (await sheets.spreadsheets.values.get({
+      spreadsheetId: planilhaId,
+      range: 'Planejamento!A1:H60',
+    })).data.values || [];
+
+    // Encontra PRIMEIRA linha onde coluna B (index 1) === 'SEGUNDA'
+    let linhaDias = -1;
+    for (let i = 0; i < planSheet.length; i++) {
+      if ((planSheet[i][1] || '').toUpperCase() === 'SEGUNDA') {
+        linhaDias = i + 1; // 1-based
+        break;
+      }
+    }
+
+    if (linhaDias === -1) throw new Error('Linha dos dias não encontrada na aba Planejamento');
+
+    // Detecta linhas dos horários procurando coluna A a partir de linhaDias
+    // Horários possíveis: 10, 12, 14, 18, 20, 22 (compara prefixo "NN:")
+    const HORAS = ['10', '12', '14', '18', '20', '22'];
+    const horLinha = {};
+    for (let i = linhaDias; i < Math.min(planSheet.length, linhaDias + 30); i++) {
+      const cel = (planSheet[i][0] || '').trim();
+      for (const h of HORAS) {
+        if (cel.startsWith(`${h}:`) && !horLinha[h]) {
+          horLinha[h] = i + 1; // 1-based
+        }
+      }
+    }
+
+    const DIA_COL_PLAN = {
       Segunda: 'B', Terça: 'C', Terca: 'C', Quarta: 'D',
       Quinta: 'E', Sexta: 'F', Sábado: 'G', Sabado: 'G', Domingo: 'H',
     };
-    const HORARIO_LIN = {
-      '10H': 9,  '10h': 9,
-      '12H': 15, '12h': 15,
-      '14H': 21, '14h': 21,
-      '18H': 24, '18h': 24,
-      '20H': 27, '20h': 27,
-      '22H': 30, '22h': 30,
-    };
 
-    // Limpa a área de conteúdo antes de escrever
+    // Limpa a área da grade: da linha linhaDias+2 até linhaDias+25
+    const clearStart = linhaDias + 2;
+    const clearEnd   = linhaDias + 25;
     await sheets.spreadsheets.values.clear({
       spreadsheetId: planilhaId,
-      range: 'Planejamento!B9:H30',
+      range: `Planejamento!B${clearStart}:H${clearEnd}`,
     });
 
-    // Indexa planejamento por chave dia|horario
-    const planIdx = {};
-    (planejamento || []).forEach((p) => {
-      planIdx[`${p.dia}|${p.horario}`] = p.conteudo || '';
-    });
-
-    // Gera células apenas para os itens do planejamento
     const planData = (planejamento || []).map((p) => {
-      const col = DIA_COL[p.dia];
-      const lin = HORARIO_LIN[p.horario] || HORARIO_LIN[(p.horario || '').toUpperCase()];
+      const col = DIA_COL_PLAN[p.dia];
+      const lin = horLinha[horNumero(p.horario)];
       if (!col || !lin) return null;
       return { range: `Planejamento!${col}${lin}`, values: [[p.conteudo || '']] };
     }).filter(Boolean);
@@ -439,6 +457,92 @@ async function exportarParaCobo(planilhaId, conteudos, planejamento) {
         requestBody: { valueInputOption: 'USER_ENTERED', data: planData },
       });
     }
+
+    // ── 4. Aba "Matriz Estratégica - Insta" — detecção dinâmica ──────────────
+    try {
+      const matSheet = (await sheets.spreadsheets.values.get({
+        spreadsheetId: planilhaId,
+        range: "'Matriz Estratégica - Insta'!A1:L40",
+      })).data.values || [];
+
+      // Encontra linha onde coluna D (index 3) === 'Segunda'
+      let linhaDiasMat = -1;
+      for (let i = 0; i < matSheet.length; i++) {
+        if ((matSheet[i][3] || '') === 'Segunda') {
+          linhaDiasMat = i + 1;
+          break;
+        }
+      }
+
+      if (linhaDiasMat === -1) throw new Error('Linha dos dias não encontrada na Matriz');
+
+      // Linhas de atributos: offsets relativos à linha dos dias
+      const lC = linhaDiasMat + 3; // Conteúdo
+      const lM = linhaDiasMat + 4; // Modelagem
+      const lP = linhaDiasMat + 5; // Permeabilidade
+      const lF = linhaDiasMat + 6; // Formato
+      const lV = linhaDiasMat + 7; // Conversação (CTA)
+      const lH = linhaDiasMat + 8; // Horário
+
+      const DIA_COL_MAT = {
+        Segunda: 'D', Terça: 'E', Terca: 'E', Quarta: 'F',
+        Quinta: 'G', Sexta: 'H', Sábado: 'I', Sabado: 'I', Domingo: 'J',
+      };
+
+      const diaMap   = {};
+      (planejamento || []).forEach((p) => { diaMap[p.dia] = p; });
+      const ideiaMapa = {};
+      (conteudos || []).forEach((c) => { ideiaMapa[c.ideia] = c; });
+
+      const TODOS_DIAS = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
+      const matData = [];
+
+      for (const dia of TODOS_DIAS) {
+        const col  = DIA_COL_MAT[dia];
+        const item = diaMap[dia];
+        const cta  = item ? (ideiaMapa[item.conteudo]?.conversacao || '') : '';
+        const M    = "'Matriz Estratégica - Insta'";
+        matData.push(
+          { range: `${M}!${col}${lC}`, values: [[item?.conteudo       || '']] },
+          { range: `${M}!${col}${lM}`, values: [[item?.modelagem      || '']] },
+          { range: `${M}!${col}${lP}`, values: [[item?.permeabilidade || '']] },
+          { range: `${M}!${col}${lF}`, values: [[item?.formato        || '']] },
+          { range: `${M}!${col}${lV}`, values: [[cta]] },
+          { range: `${M}!${col}${lH}`, values: [[item?.horario        || '']] },
+        );
+      }
+
+      // Encontra dinamicamente as linhas de equilíbrio pela coluna J (index 9)
+      const EQ_LABELS = ['Hero', 'Hub', 'Help', 'Profundidade', 'Aderência'];
+      const eqLinhas  = {};
+      for (let i = 0; i < matSheet.length; i++) {
+        const jVal = (matSheet[i][9] || '').trim();
+        for (const label of EQ_LABELS) {
+          if (jVal === label && !eqLinhas[label]) eqLinhas[label] = i + 1;
+        }
+      }
+
+      const plan   = planejamento || [];
+      const counts = {
+        Hero:         plan.filter((p) => p.modelagem      === 'HERO').length,
+        Hub:          plan.filter((p) => p.modelagem      === 'HUB').length,
+        Help:         plan.filter((p) => p.modelagem      === 'HELP').length,
+        Profundidade: plan.filter((p) => p.permeabilidade === 'Profundidade').length,
+        Aderência:    plan.filter((p) => p.permeabilidade === 'Aderência').length,
+      };
+
+      for (const [label, lin] of Object.entries(eqLinhas)) {
+        matData.push({
+          range: `'Matriz Estratégica - Insta'!K${lin}`,
+          values: [[counts[label] ?? '']],
+        });
+      }
+
+      await sheets.spreadsheets.values.batchUpdate({
+        spreadsheetId: planilhaId,
+        requestBody: { valueInputOption: 'USER_ENTERED', data: matData },
+      });
+    } catch (_) { /* aba Matriz opcional */ }
 
     return { ok: true };
   } catch (err) {
