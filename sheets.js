@@ -423,23 +423,60 @@ async function exportarParaCobo(planilhaId, reels, fotos) {
 
     // ── 4. Aba "Matriz Estratégica - Insta" — top 7 balanceado ───────────────
     try {
-      // Seleciona top 7 balanceando Hero/Hub/Help (máx 2 HERO, máx 2 HUB)
+      // Seleciona top 7: máx 1 HERO, mín 2 HUB, mín 3 HELP
+      // Reclassifica se o pool não tiver conteúdo suficiente de cada tipo
       const sortedTodos = [...todos].sort((a, b) => (b.nota || 0) - (a.nota || 0));
+      const pool = sortedTodos.map((c) => ({ ...c, modelagem: (c.modelagem || '').toUpperCase() }));
       const top7 = [];
-      let heroN = 0, hubN = 0;
-      for (const c of sortedTodos) {
+      const usados = new Set();
+
+      const pickType = (type, max) => {
+        let n = 0;
+        for (const c of pool) {
+          if (n >= max || top7.length >= 7) break;
+          if (!usados.has(c.ideia) && c.modelagem === type) {
+            top7.push({ ...c }); usados.add(c.ideia); n++;
+          }
+        }
+      };
+
+      pickType('HERO', 1);  // máx 1 HERO
+      pickType('HUB',  2);  // 2 HUB
+      pickType('HELP', 4);  // até 4 HELP (7 - 1 - 2)
+
+      // Preenche slots restantes com qualquer conteúdo
+      for (const c of pool) {
         if (top7.length >= 7) break;
-        const m = (c.modelagem || '').toUpperCase();
-        if (m === 'HERO' && heroN >= 2) continue;
-        if (m === 'HUB'  && hubN  >= 2) continue;
-        top7.push(c);
-        if (m === 'HERO') heroN++;
-        else if (m === 'HUB') hubN++;
+        if (!usados.has(c.ideia)) { top7.push({ ...c }); usados.add(c.ideia); }
       }
-      // Completa com melhores restantes se < 7
-      for (const c of sortedTodos) {
-        if (top7.length >= 7) break;
-        if (!top7.some((s) => s.ideia === c.ideia)) top7.push(c);
+
+      // Reclassificação para garantir regras obrigatórias
+      const cnt = (t) => top7.filter((s) => s.modelagem === t).length;
+
+      // Regra 1: máx 1 HERO — reclassifica extras como HELP
+      if (cnt('HERO') > 1) {
+        top7.filter((s) => s.modelagem === 'HERO')
+          .sort((a, b) => (a.nota || 0) - (b.nota || 0))    // menor nota primeiro
+          .slice(0, cnt('HERO') - 1)
+          .forEach((s) => { s.modelagem = 'HELP'; });
+      }
+
+      // Regra 2: mín 2 HUB — reclassifica HELP de menor nota como HUB
+      while (cnt('HUB') < 2) {
+        const candidato = top7
+          .filter((s) => s.modelagem === 'HELP')
+          .sort((a, b) => (a.nota || 0) - (b.nota || 0))[0];
+        if (!candidato) break;
+        candidato.modelagem = 'HUB';
+      }
+
+      // Regra 3: mín 3 HELP — reclassifica HUB excedente (>2) como HELP
+      while (cnt('HELP') < 3 && cnt('HUB') > 2) {
+        const candidato = top7
+          .filter((s) => s.modelagem === 'HUB')
+          .sort((a, b) => (a.nota || 0) - (b.nota || 0))[0];
+        if (!candidato) break;
+        candidato.modelagem = 'HELP';
       }
 
       // Mapa ideia → conteudo (para CTA)
